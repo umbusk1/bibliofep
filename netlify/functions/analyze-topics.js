@@ -1,6 +1,6 @@
 // ============================================
-// FUNCIÓN: ANALYZE TOPICS - CORREGIDA
-// Usa Claude API para extraer temas de conversaciones
+// FUNCIÓN: ANALYZE TOPICS - OPTIMIZADA
+// Análisis inteligente y agrupado de temas
 // ============================================
 
 const { Pool } = require('pg');
@@ -46,13 +46,13 @@ exports.handler = async (event, context) => {
       ssl: { rejectUnauthorized: false }
     });
 
-    // Obtener todas las conversaciones que NO tienen temas analizados
+    // Obtener conversaciones sin temas analizados
     const conversationsResult = await pool.query(`
       SELECT DISTINCT c.id, c.title
       FROM conversations c
       LEFT JOIN topics t ON c.id = t.conversation_id
       WHERE t.id IS NULL
-      LIMIT 50
+      LIMIT 100
     `);
 
     if (conversationsResult.rows.length === 0) {
@@ -70,7 +70,7 @@ exports.handler = async (event, context) => {
 
     const conversationIds = conversationsResult.rows.map(row => row.id);
 
-    // Obtener mensajes de usuario de estas conversaciones
+    // Obtener mensajes de usuario
     const messagesResult = await pool.query(`
       SELECT 
         m.conversation_id,
@@ -108,26 +108,47 @@ exports.handler = async (event, context) => {
       conversationTexts[msg.conversation_id].messages.push(msg.content);
     });
 
-    // Preparar texto para Claude (máximo 30 conversaciones para no exceder límites)
+    // Preparar resumen de conversaciones (limitar para no exceder tokens)
     const conversationSummaries = Object.entries(conversationTexts)
-      .slice(0, 30)
+      .slice(0, 50)
       .map(([id, data], index) => {
-        const messagesText = data.messages.slice(0, 5).join(' | '); // Max 5 mensajes por conv
-        return `${index + 1}. ${data.title || 'Sin título'}: ${messagesText.substring(0, 200)}...`;
-      }).join('\n\n');
+        const messagesText = data.messages.slice(0, 3).join(' | ');
+        return `${index + 1}. ${messagesText.substring(0, 150)}`;
+      }).join('\n');
 
-    const prompt = `Analiza estas conversaciones de un chatbot sobre Historia de Venezuela y extrae los 10-15 temas principales más relevantes.
+    // PROMPT MEJORADO
+    const prompt = `Analiza estas preguntas de usuarios sobre Historia de Venezuela y extrae entre 5-10 CATEGORÍAS TEMÁTICAS PRINCIPALES, agrupando temas similares.
 
 CONVERSACIONES:
 ${conversationSummaries}
 
-Identifica temas específicos como: personajes históricos (ej: Simón Bolívar, José Antonio Páez), eventos (ej: Batalla de Carabobo, Guerra Federal), períodos (ej: Independencia, Era Democrática), lugares (ej: Gran Colombia, Capitanía General), conceptos (ej: caudillismo, modernización).
+INSTRUCCIONES CRÍTICAS:
+1. AGRUPA temas relacionados en categorías amplias (ej: en vez de "Simón Bolívar", "Antonio José de Sucre", "José Antonio Páez" → usa "Próceres de la Independencia")
+2. NO repitas "de Venezuela" - se sobreentiende que todo es sobre Venezuela
+3. SOLO menciona países si son DIFERENTES a Venezuela (ej: "Gran Colombia" incluye otros países, "España" es otro país)
+4. Usa nombres CONCISOS y CLAROS
+5. Prioriza categorías amplias sobre personajes individuales
 
-Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni texto adicional):
+EJEMPLOS DE BUENAS CATEGORÍAS:
+✅ "Independencia" (no "Guerra de Independencia de Venezuela")
+✅ "Época Colonial" (no "Época Colonial Venezolana")
+✅ "Fuerzas Armadas" (agrupa: ejército, milicia, defensa)
+✅ "Democracia" (agrupa: presidentes democráticos, elecciones, partidos)
+✅ "Próceres" (agrupa: Bolívar, Páez, Miranda, etc)
+✅ "Caudillismo" (agrupa: caudillos, Guerra Federal, Zamora)
+✅ "Relaciones con España" (porque involucra otro país)
+✅ "Economía" (agrupa: petróleo, agricultura, comercio)
+
+EJEMPLOS DE MALAS CATEGORÍAS:
+❌ "Historia de Venezuela" (demasiado genérico)
+❌ "Simón Bolívar y la Independencia de Venezuela" (muy largo y redundante)
+❌ "El General José Antonio Páez" (muy específico, debería ser parte de "Próceres" o "Caudillismo")
+
+Responde SOLO con JSON válido (sin markdown, sin texto adicional):
 {
   "topics": [
-    {"name": "Simón Bolívar", "relevance": 0.95},
-    {"name": "Guerra de Independencia", "relevance": 0.85}
+    {"name": "Independencia", "relevance": 0.95},
+    {"name": "Época Colonial", "relevance": 0.80}
   ]
 }`;
 
@@ -141,7 +162,8 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
+        max_tokens: 1500,
+        temperature: 0.3, // Más bajo para respuestas más consistentes
         messages: [{
           role: 'user',
           content: prompt
@@ -157,15 +179,13 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni
     const claudeData = await claudeResponse.json();
     const analysisText = claudeData.content[0].text;
 
-    console.log('Claude response:', analysisText); // Para debugging
+    console.log('Claude response:', analysisText);
 
-    // Extraer JSON de la respuesta
+    // Extraer JSON
     let analysis;
     try {
-      // Intentar parsear directamente
       analysis = JSON.parse(analysisText);
     } catch (e) {
-      // Si falla, buscar JSON entre llaves
       const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
         throw new Error('No se pudo extraer JSON de la respuesta de Claude');
@@ -177,18 +197,27 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni
       throw new Error('Formato de respuesta inválido de Claude');
     }
 
+    // Post-procesamiento: limpiar y validar temas
+    const cleanedTopics = analysis.topics
+      .map(topic => ({
+        name: cleanTopic(topic.name),
+        relevance: topic.relevance || 0.5
+      }))
+      .filter(topic => topic.name.length > 0 && topic.name.length < 100)
+      .slice(0, 12); // Máximo 12 temas
+
     // Guardar temas en la base de datos
     let savedTopics = 0;
     for (const convId of conversationIds) {
-      for (const topic of analysis.topics) {
+      for (const topic of cleanedTopics) {
         try {
           await pool.query(`
             INSERT INTO topics (conversation_id, topic_name, relevance_score)
             VALUES ($1, $2, $3)
-          `, [convId, topic.name, topic.relevance || 0.5]);
+            ON CONFLICT DO NOTHING
+          `, [convId, topic.name, topic.relevance]);
           savedTopics++;
         } catch (err) {
-          // Ignorar duplicados
           if (!err.message.includes('duplicate')) {
             console.error('Error guardando tema:', err);
           }
@@ -204,9 +233,9 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni
       body: JSON.stringify({
         success: true,
         conversationsAnalyzed: conversationIds.length,
-        topicsIdentified: analysis.topics.length,
+        topicsIdentified: cleanedTopics.length,
         topicsSaved: savedTopics,
-        topics: analysis.topics
+        topics: cleanedTopics
       })
     };
 
@@ -223,3 +252,35 @@ Responde SOLO con un objeto JSON válido en este formato exacto (sin markdown ni
     };
   }
 };
+
+// ============================================
+// FUNCIÓN PARA LIMPIAR NOMBRES DE TEMAS
+// ============================================
+
+function cleanTopic(topicName) {
+  let cleaned = topicName.trim();
+  
+  // Eliminar redundancias comunes
+  const redundancies = [
+    / de Venezuela$/i,
+    / venezolano$/i,
+    / venezolana$/i,
+    / en Venezuela$/i,
+    /^La /,
+    /^El /,
+    /^Los /,
+    /^Las /
+  ];
+  
+  redundancies.forEach(pattern => {
+    cleaned = cleaned.replace(pattern, '');
+  });
+  
+  // Capitalizar correctamente
+  cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  
+  // Eliminar espacios extras
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  return cleaned;
+}
