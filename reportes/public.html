@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Bibliofep - Público</title>
+    <link rel="stylesheet" href="css/public-styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <!-- Para exportar a PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    
+    <!-- HEADER -->
+    <header class="public-header">
+        <div class="header-content">
+            <h1>📊 Reportes de Conversaciones - Bibliofep</h1>
+            <p>Fundación Empresas Polar</p>
+        </div>
+    </header>
+
+    <div class="public-container">
+        
+        <!-- SIDEBAR con lista de reportes -->
+        <aside class="reports-sidebar">
+            <h3>Reportes Anteriores</h3>
+            <div id="reportsList" class="reports-list">
+                <p class="loading-text">Cargando reportes...</p>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="report-content" id="reportContent">
+            
+            <!-- Encabezado del reporte -->
+            <div class="report-header">
+                <h2 id="reportTitle">Cargando...</h2>
+                <div class="report-meta">
+                    <span id="reportPeriod"></span>
+                    <span id="reportDate"></span>
+                </div>
+                <div class="export-buttons">
+                    <button id="exportPdfBtn" class="btn-export">📄 Descargar PDF</button>
+                    <button id="exportWordBtn" class="btn-export">📝 Descargar Word</button>
+                </div>
+            </div>
+
+            <!-- Estadísticas generales -->
+            <section class="stats-summary">
+                <div class="stat-box">
+                    <h4>💬 Conversaciones</h4>
+                    <p id="statConversations">-</p>
+                </div>
+                <div class="stat-box">
+                    <h4>✉️ Mensajes</h4>
+                    <p id="statMessages">-</p>
+                </div>
+                <div class="stat-box">
+                    <h4>📊 Promedio</h4>
+                    <p id="statAverage">-</p>
+                </div>
+                <div class="stat-box">
+                    <h4>🌍 Países</h4>
+                    <p id="statCountries">-</p>
+                </div>
+            </section>
+
+            <!-- Gráficos -->
+            <section class="charts-section">
+                
+                <div class="chart-container">
+                    <h3>📅 Conversaciones por Día</h3>
+                    <canvas id="chartConversations"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>🌍 Distribución por País</h3>
+                    <canvas id="chartCountries"></canvas>
+                </div>
+
+                <div class="chart-container chart-full">
+                    <h3>📚 Temas Más Consultados</h3>
+                    <canvas id="chartTopics"></canvas>
+                </div>
+
+                <div class="chart-container">
+                    <h3>📈 Promedio de Mensajes por Día</h3>
+                    <canvas id="chartAverage"></canvas>
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <script src="js/public-report.js"></script>
+    
+</body>
+</html>
