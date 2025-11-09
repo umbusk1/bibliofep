@@ -321,6 +321,10 @@ function setupExportButtons() {
     document.getElementById('exportWordBtn').addEventListener('click', exportToWord);
 }
 
+// ============================================
+// EXPORTAR A PDF - MEJORADO
+// ============================================
+
 async function exportToPDF() {
     if (!currentReport) {
         alert('No hay reporte cargado');
@@ -332,17 +336,54 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando PDF...';
 
     try {
+        // Clonar el elemento para no afectar la visualización
         const element = document.getElementById('reportContent');
+        const clone = element.cloneNode(true);
         
+        // Ocultar botones de exportación en el clon
+        const exportButtons = clone.querySelector('.export-buttons');
+        if (exportButtons) {
+            exportButtons.style.display = 'none';
+        }
+        
+        // Agregar logo al inicio del reporte
+        const logo = document.createElement('div');
+        logo.style.textAlign = 'center';
+        logo.style.marginBottom = '30px';
+        logo.innerHTML = `<img src="/__logo-umbusk.png" style="height: 80px; width: auto;">`;
+        clone.insertBefore(logo, clone.firstChild);
+        
+        // Configuración mejorada para PDF
         const opt = {
-            margin: 15,
+            margin: [15, 15, 15, 15],
             filename: `${sanitizeFilename(currentReport.title)}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, logging: false },
-            jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' }
+            image: { 
+                type: 'jpeg', 
+                quality: 1 
+            },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                // Forzar renderizado de canvas (gráficos)
+                allowTaint: true,
+                foreignObjectRendering: false
+            },
+            jsPDF: { 
+                unit: 'mm', 
+                format: 'letter', 
+                orientation: 'portrait',
+                compress: true
+            },
+            pagebreak: { 
+                mode: ['avoid-all', 'css', 'legacy'],
+                after: '.chart-container'
+            }
         };
 
-        await html2pdf().set(opt).from(element).save();
+        // Crear PDF desde el clon
+        await html2pdf().set(opt).from(clone).save();
 
     } catch (error) {
         console.error('Error generando PDF:', error);
