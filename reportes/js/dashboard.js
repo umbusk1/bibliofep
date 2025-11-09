@@ -89,6 +89,8 @@ function setupEventListeners() {
     document.getElementById('filterType').addEventListener('change', handleFilterTypeChange);
     document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
     document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
+    // Publicación de reportes
+    setupPublishListener();
 }
 
 // ============================================
@@ -569,5 +571,80 @@ function showStatus(elementId, message, type) {
         setTimeout(() => {
             element.style.display = 'none';
         }, 5000);
+    }
+}
+
+// ============================================
+// PUBLICAR REPORTE
+// ============================================
+
+function setupPublishListener() {
+    document.getElementById('publishReportBtn').addEventListener('click', publishReport);
+}
+
+async function publishReport() {
+    const title = document.getElementById('reportTitle').value.trim();
+    
+    if (!title) {
+        showStatus('publishStatus', '⚠️ Por favor ingresa un título para el reporte', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('publishReportBtn');
+    btn.disabled = true;
+    showStatus('publishStatus', '📤 Publicando reporte...', 'loading');
+
+    try {
+        // Obtener estadísticas actuales
+        let url = '/.netlify/functions/get-stats?';
+        const params = new URLSearchParams(currentFilters);
+        url += params.toString();
+
+        const statsResponse = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!statsResponse.ok) {
+            throw new Error('Error obteniendo estadísticas');
+        }
+
+        const statsData = await statsResponse.json();
+
+        // Publicar el reporte
+        const publishResponse = await fetch('/.netlify/functions/publish-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                title,
+                filters: currentFilters,
+                statsData
+            })
+        });
+
+        const result = await publishResponse.json();
+
+        if (publishResponse.ok) {
+            showStatus('publishStatus', 
+                `✅ Reporte publicado exitosamente!\n` +
+                `Visible en: /reportes/public.html`,
+                'success'
+            );
+            
+            // Limpiar título
+            document.getElementById('reportTitle').value = '';
+        } else {
+            showStatus('publishStatus', `❌ Error: ${result.error}`, 'error');
+        }
+
+    } catch (error) {
+        console.error('Error publicando reporte:', error);
+        showStatus('publishStatus', `❌ Error: ${error.message}`, 'error');
+    } finally {
+        btn.disabled = false;
     }
 }
