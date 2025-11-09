@@ -711,3 +711,39 @@ h1, h2, h3, h4, h5, h6 {
         page-break-inside: avoid;
     }
 }
+
+/* ============================================
+   SECCIÓN DE PUBLICACIÓN
+   ============================================ */
+
+.publish-section {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #0ea5e9;
+}
+
+.publish-container {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.report-title-input {
+    flex: 1;
+    min-width: 300px;
+    padding: 12px 15px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    transition: var(--transition);
+}
+
+.report-title-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.report-title-input::placeholder {
+    color: var(--text-light);
+}
