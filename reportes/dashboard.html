@@ -7,6 +7,73 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- Chart.js desde CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        /* Estilos adicionales para los botones de acción */
+        .action-buttons-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 1200px;
+        }
+        
+        .action-buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+        
+        .action-btn {
+            padding: 20px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        
+        .action-btn:active {
+            transform: translateY(0);
+        }
+        
+        .action-btn-upload {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-btn-analysis {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        }
+        
+        .action-btn-publish {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        }
+        
+        .section-hidden {
+            display: none !important;
+        }
+        
+        .header-logo {
+            height: 50px;
+            margin-right: 15px;
+        }
+    </style>
 </head>
 <body class="dashboard-page">
     
@@ -14,7 +81,9 @@
 <header class="dashboard-header">
     <div class="header-content">
         <div class="header-left">
-            <img src="logo-umbusk.png" alt="Umbusk Logo" class="header-logo">
+            <img src="https://umbusk.com/wp-content/uploads/2024/10/cropped-logo-umbusk-2.png" 
+                 alt="Umbusk Logo" 
+                 class="header-logo">
             <div class="header-text">
                 <h1>📊 Reportes Bibliofep</h1>
                 <p class="subtitle">Sistema de Análisis de Conversaciones</p>
@@ -29,11 +98,26 @@
     </div>
 </header>
 
+<!-- BOTONES DE ACCIÓN PRINCIPALES -->
+<div class="action-buttons-section">
+    <div class="action-buttons-grid">
+        <button class="action-btn action-btn-upload" onclick="showSection('upload')">
+            📤 Cargar Nuevo JSON
+        </button>
+        <button class="action-btn action-btn-analysis" onclick="showSection('analysis')">
+            🤖 Análisis con Claude AI
+        </button>
+        <button class="action-btn action-btn-publish" onclick="showSection('publish')">
+            🌐 Publicar Reporte
+        </button>
+    </div>
+</div>
+
     <!-- MAIN CONTENT -->
     <main class="dashboard-main">
         
         <!-- SECCIÓN DE UPLOAD -->
-        <section class="upload-section card">
+        <section id="uploadSection" class="upload-section card">
             <h2>📤 Cargar Nuevo JSON</h2>
             <div class="upload-container">
                 <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
@@ -48,11 +132,22 @@
         </section>
 
         <!-- SECCIÓN DE ANÁLISIS DE TEMAS -->
-        <section class="analyze-section card">
+        <section id="analysisSection" class="analyze-section card section-hidden">
             <h2>🤖 Análisis de Temas con Claude AI</h2>
             <p class="section-description">Analiza automáticamente los temas de las conversaciones usando Claude API</p>
             <button id="analyzeTopicsBtn" class="btn-primary">Analizar Temas</button>
             <div id="analyzeStatus" class="status-message" style="display: none;"></div>
+        </section>
+
+        <!-- SECCIÓN DE PUBLICACIÓN -->
+        <section id="publishSection" class="publish-section card section-hidden">
+            <h2>🌐 Publicar Reporte</h2>
+            <p class="section-description">Una vez que hayas revisado las estadísticas, puedes publicar este reporte para que sea visible públicamente.</p>
+            <div class="publish-container">
+                <input type="text" id="reportTitle" placeholder="Título del reporte (ej: Reporte Octubre 2025)" class="report-title-input">
+                <button id="publishReportBtn" class="btn-success">Publicar Reporte</button>
+            </div>
+            <div id="publishStatus" class="status-message" style="display: none;"></div>
         </section>
 
         <!-- FILTROS -->
@@ -149,17 +244,6 @@
             </div>
         </section>
 
-        <!-- SECCIÓN DE PUBLICACIÓN -->
-        <section class="publish-section card">
-            <h2>📢 Publicar Reporte</h2>
-            <p class="section-description">Una vez que hayas revisado las estadísticas, puedes publicar este reporte para que sea visible públicamente.</p>
-            <div class="publish-container">
-                <input type="text" id="reportTitle" placeholder="Título del reporte (ej: Reporte Octubre 2025)" class="report-title-input">
-                <button id="publishReportBtn" class="btn-success">Publicar Reporte</button>
-            </div>
-            <div id="publishStatus" class="status-message" style="display: none;"></div>
-        </section>
-
         <!-- GRÁFICOS -->
         <section class="charts-grid">
             
@@ -197,6 +281,31 @@
     </footer>
 
     <!-- SCRIPTS -->
+    <script>
+        // ============================================
+        // FUNCIÓN PARA MOSTRAR/OCULTAR SECCIONES
+        // ============================================
+        function showSection(section) {
+            // Ocultar todas las secciones principales
+            document.getElementById('uploadSection').classList.add('section-hidden');
+            document.getElementById('analysisSection').classList.add('section-hidden');
+            document.getElementById('publishSection').classList.add('section-hidden');
+            
+            // Mostrar la sección seleccionada
+            if (section === 'upload') {
+                document.getElementById('uploadSection').classList.remove('section-hidden');
+            } else if (section === 'analysis') {
+                document.getElementById('analysisSection').classList.remove('section-hidden');
+            } else if (section === 'publish') {
+                document.getElementById('publishSection').classList.remove('section-hidden');
+            }
+        }
+        
+        // Mostrar la sección de upload por defecto al cargar
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('upload');
+        });
+    </script>
     <script src="js/dashboard.js"></script>
     
 </body>
