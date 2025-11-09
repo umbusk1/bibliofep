@@ -175,6 +175,7 @@ function createConversationsByDayChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
+                whiteBackground: true, // ← AGREGAR ESTO
                 legend: { display: false }
             },
             scales: {
@@ -222,6 +223,7 @@ function createCountriesChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
+                whiteBackground: true, // ← AGREGAR ESTO
                 legend: { position: 'bottom' }
             }
         }
@@ -261,6 +263,7 @@ function createTopicsChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
+                whiteBackground: true, // ← AGREGAR ESTO
                 legend: { display: false }
             },
             scales: {
@@ -303,6 +306,7 @@ function createAverageMessagesChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
+                whiteBackground: true, // ← AGREGAR ESTO
                 legend: { display: false }
             },
             scales: {
