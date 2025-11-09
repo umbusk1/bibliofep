@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes Bibliofep</title>
+    <link rel="stylesheet" href="css/public-v2.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="container">
+            <h1>📊 Reportes de Conversaciones</h1>
+            <p>Fundación Empresas Polar - Bibliofep</p>
+        </div>
+    </header>
+
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="main-container">
+        
+        <!-- SIDEBAR: Lista de reportes -->
+        <aside class="sidebar">
+            <h3>Reportes Anteriores</h3>
+            <div id="reportsList" class="reports-list">
+                <div class="loading">Cargando...</div>
+            </div>
+        </aside>
+
+        <!-- CONTENIDO: Reporte actual -->
+        <main class="content">
+            
+            <!-- Encabezado del reporte -->
+            <div class="report-header">
+                <h2 id="reportTitle">Selecciona un reporte</h2>
+                <div class="report-meta">
+                    <span id="reportPeriod"></span>
+                    <span id="reportDate"></span>
+                </div>
+                <div class="export-buttons">
+                    <button id="btnPDF" class="btn btn-pdf">📄 Descargar PDF</button>
+                    <button id="btnWord" class="btn btn-word">📝 Descargar Word</button>
+                </div>
+            </div>
+
+            <!-- Contenedor del reporte para exportar -->
+            <div id="reportContent" class="report-body">
+                
+                <!-- Estadísticas generales -->
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div class="stat-icon">💬</div>
+                        <div class="stat-value" id="totalConversations">-</div>
+                        <div class="stat-label">Conversaciones</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">📨</div>
+                        <div class="stat-value" id="totalMessages">-</div>
+                        <div class="stat-label">Mensajes</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="avgMessages">-</div>
+                        <div class="stat-label">Promedio</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-icon">🌍</div>
+                        <div class="stat-value" id="totalCountries">-</div>
+                        <div class="stat-label">Países</div>
+                    </div>
+                </div>
+
+                <!-- Gráfico 1: Conversaciones por día -->
+                <div class="chart-section">
+                    <h3>📅 Conversaciones por Día</h3>
+                    <div class="chart-container">
+                        <canvas id="chartConversations"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 2: Distribución por países -->
+                <div class="chart-section">
+                    <h3>🌍 Distribución por País</h3>
+                    <div class="chart-container">
+                        <canvas id="chartCountries"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 3: Temas principales -->
+                <div class="chart-section" id="sectionTopics">
+                    <h3>🎯 Temas Más Consultados</h3>
+                    <div class="chart-container">
+                        <canvas id="chartTopics"></canvas>
+                    </div>
+                </div>
+
+                <!-- Gráfico 4: Promedio de mensajes -->
+                <div class="chart-section" id="sectionAverage">
+                    <h3>📈 Promedio de Mensajes por Día</h3>
+                    <div class="chart-container">
+                        <canvas id="chartAverage"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script src="js/public-v2.js"></script>
+</body>
+</html>
