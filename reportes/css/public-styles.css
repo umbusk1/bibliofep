@@ -421,3 +421,28 @@ body {
         font-size: 20px;
     }
 }
+
+/* ============================================
+   MEJORAS PARA EXPORTACIÓN
+   ============================================ */
+
+@media print {
+    body {
+        background: white !important;
+    }
+    
+    .chart-container {
+        background: white !important;
+        page-break-inside: avoid;
+    }
+    
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+}
+
+/* Asegurar que los gráficos se vean bien en exportaciones */
+.chart-container canvas {
+    background: white;
+}
