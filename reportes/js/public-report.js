@@ -395,7 +395,7 @@ async function exportToPDF() {
 }
 
 // ============================================
-// EXPORTAR A WORD
+// EXPORTAR A WORD - CON GRÁFICOS
 // ============================================
 
 async function exportToWord() {
@@ -409,10 +409,12 @@ async function exportToWord() {
     btn.textContent = '⏳ Generando Word...';
 
     try {
-        // Obtener el contenido del reporte
         const statsData = currentReport.stats_data;
         
-        // Crear HTML para Word
+        // Convertir gráficos a imágenes
+        const chartImages = await convertChartsToImages();
+        
+        // Crear HTML para Word con gráficos
         let htmlContent = `
 <!DOCTYPE html>
 <html>
@@ -420,95 +422,170 @@ async function exportToWord() {
     <meta charset="UTF-8">
     <title>${currentReport.title}</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { color: #667eea; }
-        h2 { color: #764ba2; margin-top: 30px; }
-        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-        th { background-color: #667eea; color: white; }
-        .stat-box { display: inline-block; margin: 10px; padding: 20px; border: 2px solid #667eea; border-radius: 8px; }
-        .stat-box h3 { margin: 0; color: #667eea; }
-        .stat-box p { font-size: 24px; font-weight: bold; margin: 10px 0 0 0; }
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 40px;
+            line-height: 1.6;
+        }
+        .logo-container {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .logo {
+            height: 80px;
+            width: auto;
+        }
+        h1 { 
+            color: #667eea; 
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        h2 { 
+            color: #764ba2; 
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+        .report-meta {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-box { 
+            text-align: center;
+            padding: 20px; 
+            border: 2px solid #667eea; 
+            border-radius: 8px;
+            background: #f8f9ff;
+        }
+        .stat-box h3 { 
+            margin: 0 0 10px 0; 
+            color: #667eea;
+            font-size: 14px;
+        }
+        .stat-box p { 
+            font-size: 28px; 
+            font-weight: bold; 
+            margin: 0; 
+            color: #667eea;
+        }
+        .chart-container {
+            margin: 30px 0;
+            page-break-inside: avoid;
+        }
+        .chart-image {
+            width: 100%;
+            max-width: 700px;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        table { 
+            border-collapse: collapse; 
+            width: 100%; 
+            margin: 20px 0;
+            display: none; /* Ocultamos tablas ya que tenemos gráficos */
+        }
+        th, td { 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            text-align: left; 
+        }
+        th { 
+            background-color: #667eea; 
+            color: white; 
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9ff;
+        }
+        .footer {
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999; 
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
+    <div class="logo-container">
+        <img src="${await getLogoBase64()}" class="logo" alt="Umbusk Logo">
+    </div>
+    
     <h1>${currentReport.title}</h1>
-    <p><strong>Período:</strong> ${formatDate(currentReport.period_start)} - ${formatDate(currentReport.period_end)}</p>
-    <p><strong>Publicado:</strong> ${formatDateTime(currentReport.published_at)}</p>
+    
+    <div class="report-meta">
+        <p><strong>📅 Período:</strong> ${formatDate(currentReport.period_start)} - ${formatDate(currentReport.period_end)}</p>
+        <p><strong>📤 Publicado:</strong> ${formatDateTime(currentReport.published_at)}</p>
+    </div>
     
     <h2>Estadísticas Generales</h2>
-    <div class="stat-box">
-        <h3>💬 Conversaciones</h3>
-        <p>${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</p>
-    </div>
-    <div class="stat-box">
-        <h3>✉️ Mensajes</h3>
-        <p>${parseInt(statsData.general.total_messages || 0).toLocaleString()}</p>
-    </div>
-    <div class="stat-box">
-        <h3>📊 Promedio</h3>
-        <p>${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</p>
-    </div>
-    <div class="stat-box">
-        <h3>🌍 Países</h3>
-        <p>${statsData.countries.length}</p>
+    <div class="stats-grid">
+        <div class="stat-box">
+            <h3>💬 Conversaciones</h3>
+            <p>${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</p>
+        </div>
+        <div class="stat-box">
+            <h3>✉️ Mensajes</h3>
+            <p>${parseInt(statsData.general.total_messages || 0).toLocaleString()}</p>
+        </div>
+        <div class="stat-box">
+            <h3>📊 Promedio</h3>
+            <p>${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</p>
+        </div>
+        <div class="stat-box">
+            <h3>🌍 Países</h3>
+            <p>${statsData.countries.length}</p>
+        </div>
     </div>
     
-    <h2>Conversaciones por Día</h2>
-    <table>
-        <tr><th>Fecha</th><th>Cantidad</th></tr>
-        ${statsData.conversationsByDay.map(item => `
-            <tr>
-                <td>${formatDate(item.date)}</td>
-                <td>${item.count}</td>
-            </tr>
-        `).join('')}
-    </table>
+    <h2>📅 Conversaciones por Día</h2>
+    <div class="chart-container">
+        <img src="${chartImages.conversations}" class="chart-image" alt="Gráfico de Conversaciones por Día">
+    </div>
     
-    <h2>Distribución por País</h2>
-    <table>
-        <tr><th>País</th><th>Cantidad</th></tr>
-        ${statsData.countries.map(item => `
-            <tr>
-                <td>${item.country || 'Desconocido'}</td>
-                <td>${item.count}</td>
-            </tr>
-        `).join('')}
-    </table>
+    <h2>🌍 Distribución por País</h2>
+    <div class="chart-container">
+        <img src="${chartImages.countries}" class="chart-image" alt="Gráfico de Países">
+    </div>
     
     ${statsData.topics && statsData.topics.length > 0 ? `
-    <h2>Temas Más Consultados</h2>
-    <table>
-        <tr><th>Tema</th><th>Menciones</th></tr>
-        ${statsData.topics.map(item => `
-            <tr>
-                <td>${item.topic_name}</td>
-                <td>${item.count}</td>
-            </tr>
-        `).join('')}
-    </table>
+    <h2>📚 Temas Más Consultados</h2>
+    <div class="chart-container">
+        <img src="${chartImages.topics}" class="chart-image" alt="Gráfico de Temas">
+    </div>
     ` : ''}
     
-    <h2>Promedio de Mensajes por Día</h2>
-    <table>
-        <tr><th>Fecha</th><th>Promedio</th></tr>
-        ${statsData.avgMessagesByDay.map(item => `
-            <tr>
-                <td>${formatDate(item.date)}</td>
-                <td>${parseFloat(item.avg_messages).toFixed(1)}</td>
-            </tr>
-        `).join('')}
-    </table>
+    <h2>📈 Promedio de Mensajes por Día</h2>
+    <div class="chart-container">
+        <img src="${chartImages.average}" class="chart-image" alt="Gráfico de Promedio">
+    </div>
     
-    <p style="margin-top: 40px; color: #999; font-size: 12px;">
-        Generado por Sistema de Reportes Bibliofep - Fundación Empresas Polar
-    </p>
+    <div class="footer">
+        <p>Generado por Sistema de Reportes Bibliofep - Fundación Empresas Polar</p>
+        <p>Powered by Umbusk</p>
+    </div>
 </body>
 </html>
         `;
 
         // Crear blob y descargar
-        const blob = new Blob([htmlContent], { type: 'application/msword' });
+        const blob = new Blob([htmlContent], { 
+            type: 'application/vnd.ms-word'
+        });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -524,6 +601,61 @@ async function exportToWord() {
     } finally {
         btn.disabled = false;
         btn.textContent = '📝 Descargar Word';
+    }
+}
+
+// ============================================
+// CONVERTIR GRÁFICOS A IMÁGENES
+// ============================================
+
+async function convertChartsToImages() {
+    const images = {};
+    
+    try {
+        // Conversaciones por día
+        if (charts.conversations) {
+            images.conversations = charts.conversations.toBase64Image('image/png', 1);
+        }
+        
+        // Países
+        if (charts.countries) {
+            images.countries = charts.countries.toBase64Image('image/png', 1);
+        }
+        
+        // Temas
+        if (charts.topics) {
+            images.topics = charts.topics.toBase64Image('image/png', 1);
+        }
+        
+        // Promedio
+        if (charts.average) {
+            images.average = charts.average.toBase64Image('image/png', 1);
+        }
+    } catch (error) {
+        console.error('Error convirtiendo gráficos:', error);
+    }
+    
+    return images;
+}
+
+// ============================================
+// OBTENER LOGO EN BASE64
+// ============================================
+
+async function getLogoBase64() {
+    try {
+        const response = await fetch('/__logo-umbusk.png');
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error cargando logo:', error);
+        return '';
     }
 }
 
