@@ -21,8 +21,15 @@
         
         .action-buttons-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(3, 1fr); /* 3 columnas iguales */
             gap: 15px;
+        }
+        
+        /* Responsive: en pantallas pequeñas, apilar verticalmente */
+        @media (max-width: 768px) {
+            .action-buttons-grid {
+                grid-template-columns: 1fr;
+            }
         }
         
         .action-btn {
@@ -73,6 +80,47 @@
             height: 50px;
             margin-right: 15px;
         }
+        
+        /* Estilos para el input del título del reporte */
+        .publish-input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .publish-input-group input {
+            flex: 1;
+            min-width: 300px;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+        }
+        
+        .publish-input-group input:focus {
+            outline: none;
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        
+        .publish-input-group button {
+            padding: 12px 30px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .publish-input-group button:hover {
+            background: #3b8ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        }
     </style>
 </head>
 <body class="dashboard-page">
@@ -81,7 +129,7 @@
 <header class="dashboard-header">
     <div class="header-content">
         <div class="header-left">
-            <img src="logo.png" 
+            <img src="https://umbusk.com/wp-content/uploads/2024/10/cropped-logo-umbusk-2.png" 
                  alt="Umbusk Logo" 
                  class="header-logo">
             <div class="header-text">
@@ -98,7 +146,7 @@
     </div>
 </header>
 
-<!-- BOTONES DE ACCIÓN PRINCIPALES -->
+<!-- BOTONES DE ACCIÓN PRINCIPALES (EN FILA HORIZONTAL) -->
 <div class="action-buttons-section">
     <div class="action-buttons-grid">
         <button class="action-btn action-btn-upload" onclick="showSection('upload')">
@@ -143,10 +191,17 @@
         <section id="publishSection" class="publish-section card section-hidden">
             <h2>🌐 Publicar Reporte</h2>
             <p class="section-description">Una vez que hayas revisado las estadísticas, puedes publicar este reporte para que sea visible públicamente.</p>
-            <div class="publish-container">
-                <input type="text" id="reportTitle" placeholder="Título del reporte (ej: Reporte Octubre 2025)" class="report-title-input">
-                <button id="publishReportBtn" class="btn-success">Publicar Reporte</button>
+            
+            <div class="publish-input-group">
+                <input type="text" 
+                       id="reportTitleInput" 
+                       placeholder="Título del reporte (ej: Reporte Octubre 2025)" 
+                       style="flex: 1;">
+                <button onclick="publishReport()">
+                    📢 Publicar Ahora
+                </button>
             </div>
+            
             <div id="publishStatus" class="status-message" style="display: none;"></div>
         </section>
 
@@ -299,6 +354,32 @@
             } else if (section === 'publish') {
                 document.getElementById('publishSection').classList.remove('section-hidden');
             }
+        }
+        
+        // Función para publicar reporte (placeholder)
+        async function publishReport() {
+            const title = document.getElementById('reportTitleInput').value.trim();
+            
+            if (!title) {
+                alert('Por favor escribe un título para el reporte');
+                return;
+            }
+            
+            const statusDiv = document.getElementById('publishStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.textContent = '📤 Publicando reporte...';
+            statusDiv.style.color = '#4facfe';
+            
+            // TODO: Aquí irá la llamada real a la función de Netlify
+            setTimeout(() => {
+                statusDiv.textContent = '✅ Reporte publicado exitosamente';
+                statusDiv.style.color = '#10b981';
+                
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                    document.getElementById('reportTitleInput').value = '';
+                }, 3000);
+            }, 2000);
         }
         
         // Mostrar la sección de upload por defecto al cargar
