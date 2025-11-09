@@ -820,6 +820,27 @@ async function convertChartsToImages() {
 }
 
 // ============================================
+// OBTENER LOGO EN BASE64
+// ============================================
+
+async function getLogoBase64() {
+    try {
+        const response = await fetch('logo-umbusk.png');
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error cargando logo:', error);
+        return '';
+    }
+}
+
+// ============================================
 // HELPERS
 // ============================================
 
