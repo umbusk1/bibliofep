@@ -38,7 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function verifyAuth() {
     try {
-        const response = await fetch('/.netlify/functions/auth-verify', {
+        const response = await fetch('/api/auth-verify', {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
@@ -74,13 +74,8 @@ function setupEventListeners() {
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', logout);
 
-    // Upload de JSON
-    document.getElementById('selectFileBtn').addEventListener('click', () => {
-        document.getElementById('jsonFileInput').click();
-    });
-
+    // Upload de JSON - NUEVO: usa el input oculto directamente
     document.getElementById('jsonFileInput').addEventListener('change', handleFileSelect);
-    document.getElementById('uploadBtn').addEventListener('click', uploadJSON);
 
     // Análisis de temas
     document.getElementById('analyzeTopicsBtn').addEventListener('click', analyzeTopics);
@@ -89,8 +84,91 @@ function setupEventListeners() {
     document.getElementById('filterType').addEventListener('change', handleFilterTypeChange);
     document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
     document.getElementById('resetFiltersBtn').addEventListener('click', resetFilters);
-    // Publicación de reportes
-    setupPublishListener();
+}
+
+// ============================================
+// FUNCIONES PARA BOTONES SUPERIORES
+// ============================================
+
+// Función global para abrir el selector de archivos
+window.openFileSelector = function() {
+    document.getElementById('jsonFileInput').click();
+}
+
+// Función global para mostrar/ocultar sección de análisis
+window.showAnalysisSection = function() {
+    const section = document.getElementById('analysisSection');
+    if (section.classList.contains('section-hidden')) {
+        section.classList.remove('section-hidden');
+    } else {
+        section.classList.add('section-hidden');
+    }
+}
+
+// Función global para publicar reporte desde la barra superior
+window.publishReport = async function() {
+    const title = document.getElementById('reportTitleInput').value.trim();
+    
+    if (!title) {
+        alert('⚠️ Por favor escribe un título para el reporte');
+        return;
+    }
+
+    const btn = event.target; // El botón que fue clickeado
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Publicando...';
+
+    try {
+        // Obtener estadísticas actuales
+        let url = '/api/get-stats?';
+        const params = new URLSearchParams(currentFilters);
+        url += params.toString();
+
+        const statsResponse = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!statsResponse.ok) {
+            throw new Error('Error obteniendo estadísticas');
+        }
+
+        const statsData = await statsResponse.json();
+
+        // Publicar el reporte
+        const publishResponse = await fetch('/api/publish-report', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify({
+                title,
+                filters: currentFilters,
+                statsData
+            })
+        });
+
+        const result = await publishResponse.json();
+
+        if (publishResponse.ok) {
+            alert(`✅ Reporte publicado exitosamente!\n\nVisualizar en: ${window.location.origin}/reportes/public.html`);
+            
+            // Limpiar título
+            document.getElementById('reportTitleInput').value = '';
+        } else {
+            alert(`❌ Error: ${result.error}`);
+        }
+
+    } catch (error) {
+        console.error('Error publicando reporte:', error);
+        alert(`❌ Error: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
 }
 
 // ============================================
@@ -99,28 +177,22 @@ function setupEventListeners() {
 
 function handleFileSelect(event) {
     const file = event.target.files[0];
-    if (file) {
-        document.getElementById('fileName').textContent = file.name;
-        document.getElementById('uploadBtn').style.display = 'inline-block';
-    }
-}
+    if (!file) return;
 
-async function uploadJSON() {
-    const fileInput = document.getElementById('jsonFileInput');
-    const file = fileInput.files[0];
-
-    if (!file) {
-        showStatus('uploadStatus', 'Por favor selecciona un archivo', 'error');
+    // Mostrar diálogo de confirmación
+    const confirmMsg = `📄 Archivo seleccionado: ${file.name}\n\n¿Procesar este archivo?`;
+    if (!confirm(confirmMsg)) {
+        event.target.value = ''; // Limpiar selección
         return;
     }
 
-    const uploadBtn = document.getElementById('uploadBtn');
-    const statusDiv = document.getElementById('uploadStatus');
-    const progressBar = document.getElementById('uploadProgress');
+    // Procesar automáticamente
+    uploadJSON(file);
+}
 
-    uploadBtn.disabled = true;
-    progressBar.style.display = 'block';
-    showStatus('uploadStatus', 'Procesando archivo...', 'loading');
+async function uploadJSON(file) {
+    // Mostrar modal o overlay de carga
+    const loadingOverlay = showLoadingOverlay('Procesando archivo JSON...');
 
     try {
         // Leer el archivo
@@ -128,7 +200,7 @@ async function uploadJSON() {
         const jsonData = JSON.parse(fileContent);
 
         // Enviar a la API
-        const response = await fetch('/.netlify/functions/upload-json', {
+        const response = await fetch('/api/upload-json', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -140,32 +212,28 @@ async function uploadJSON() {
         const result = await response.json();
 
         if (response.ok) {
-            showStatus('uploadStatus', 
-                `✅ Archivo procesado exitosamente!\n` +
-                `Conversaciones: ${result.stats.conversationsProcessed}\n` +
-                `Mensajes: ${result.stats.messagesProcessed}`, 
-                'success'
+            alert(
+                `✅ Archivo procesado exitosamente!\n\n` +
+                `📊 Conversaciones: ${result.stats.conversationsProcessed}\n` +
+                `💬 Mensajes: ${result.stats.messagesProcessed}`
             );
 
             // Recargar datos
             setTimeout(() => {
                 loadInitialData();
-            }, 2000);
+            }, 1000);
         } else {
-            showStatus('uploadStatus', `❌ Error: ${result.error}`, 'error');
+            alert(`❌ Error: ${result.error}`);
         }
 
     } catch (error) {
         console.error('Error subiendo JSON:', error);
-        showStatus('uploadStatus', `❌ Error al procesar: ${error.message}`, 'error');
+        alert(`❌ Error al procesar: ${error.message}`);
     } finally {
-        uploadBtn.disabled = false;
-        progressBar.style.display = 'none';
+        hideLoadingOverlay(loadingOverlay);
         
         // Limpiar input
-        fileInput.value = '';
-        document.getElementById('fileName').textContent = '';
-        uploadBtn.style.display = 'none';
+        document.getElementById('jsonFileInput').value = '';
     }
 }
 
@@ -181,19 +249,7 @@ async function analyzeTopics() {
     showStatus('analyzeStatus', '🤖 Analizando temas con Claude AI...', 'loading');
 
     try {
-        // Primero, obtener IDs de conversaciones sin temas analizados
-        const statsResponse = await fetch('/.netlify/functions/get-stats', {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (!statsResponse.ok) {
-            throw new Error('Error obteniendo datos');
-        }
-
-        // Por ahora, vamos a analizar todas las conversaciones recientes
-        // En producción, podrías filtrar solo las que no tienen temas
+        // Obtener conversaciones para analizar
         const conversationIds = await getRecentConversationIds();
 
         if (conversationIds.length === 0) {
@@ -203,7 +259,7 @@ async function analyzeTopics() {
         }
 
         // Llamar a la función de análisis
-        const response = await fetch('/.netlify/functions/analyze-topics', {
+        const response = await fetch('/api/analyze-topics', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -240,9 +296,9 @@ async function analyzeTopics() {
 
 // Helper para obtener IDs de conversaciones recientes
 async function getRecentConversationIds() {
-    // Esta es una función simplificada
-    // En producción, harías una consulta más específica
-    return ['a8f85631-bd53-4e03-9a74-4383d96449d1']; // Ejemplo del JSON
+    // Por ahora retorna IDs de ejemplo
+    // En producción, consultarías la BD para obtener IDs sin análisis
+    return [];
 }
 
 // ============================================
@@ -311,7 +367,7 @@ function loadInitialData() {
 async function loadStats() {
     try {
         // Construir URL con parámetros
-        let url = '/.netlify/functions/get-stats?';
+        let url = '/api/get-stats?';
         const params = new URLSearchParams(currentFilters);
         url += params.toString();
 
@@ -467,7 +523,7 @@ function createCountriesChart(data) {
 }
 
 // ============================================
-// GRÁFICO: TEMAS MÁS CONSULTADOS - CORREGIDO
+// GRÁFICO: TEMAS MÁS CONSULTADOS
 // ============================================
 
 function createTopicsChart(data) {
@@ -489,7 +545,10 @@ function createTopicsChart(data) {
         if (!message) {
             message = document.createElement('p');
             message.className = 'no-data';
-            message.textContent = 'No hay temas analizados. Usa el botón "Analizar Temas" para generar este gráfico.';
+            message.style.textAlign = 'center';
+            message.style.padding = '40px 20px';
+            message.style.color = '#666';
+            message.textContent = 'No hay temas analizados. Usa el botón "🤖 Análisis con Claude AI" para generar este gráfico.';
             container.appendChild(message);
         }
         return;
@@ -582,7 +641,54 @@ function createAvgMessagesChart(data) {
 }
 
 // ============================================
-// HELPERS
+// HELPERS - LOADING OVERLAY
+// ============================================
+
+function showLoadingOverlay(message) {
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    `;
+    
+    content.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+        <h3 style="margin: 0 0 10px 0; color: #333;">${message}</h3>
+        <p style="margin: 0; color: #666;">Por favor espera...</p>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    return overlay;
+}
+
+function hideLoadingOverlay(overlay) {
+    if (overlay && overlay.parentNode) {
+        overlay.parentNode.removeChild(overlay);
+    }
+}
+
+// ============================================
+// HELPERS - STATUS MESSAGES
 // ============================================
 
 function showStatus(elementId, message, type) {
@@ -595,80 +701,5 @@ function showStatus(elementId, message, type) {
         setTimeout(() => {
             element.style.display = 'none';
         }, 5000);
-    }
-}
-
-// ============================================
-// PUBLICAR REPORTE
-// ============================================
-
-function setupPublishListener() {
-    document.getElementById('publishReportBtn').addEventListener('click', publishReport);
-}
-
-async function publishReport() {
-    const title = document.getElementById('reportTitle').value.trim();
-    
-    if (!title) {
-        showStatus('publishStatus', '⚠️ Por favor ingresa un título para el reporte', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('publishReportBtn');
-    btn.disabled = true;
-    showStatus('publishStatus', '📤 Publicando reporte...', 'loading');
-
-    try {
-        // Obtener estadísticas actuales
-        let url = '/.netlify/functions/get-stats?';
-        const params = new URLSearchParams(currentFilters);
-        url += params.toString();
-
-        const statsResponse = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (!statsResponse.ok) {
-            throw new Error('Error obteniendo estadísticas');
-        }
-
-        const statsData = await statsResponse.json();
-
-        // Publicar el reporte
-        const publishResponse = await fetch('/.netlify/functions/publish-report', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({
-                title,
-                filters: currentFilters,
-                statsData
-            })
-        });
-
-        const result = await publishResponse.json();
-
-        if (publishResponse.ok) {
-            showStatus('publishStatus', 
-                `✅ Reporte publicado exitosamente!\n` +
-                `Visible en: /reportes/public.html`,
-                'success'
-            );
-            
-            // Limpiar título
-            document.getElementById('reportTitle').value = '';
-        } else {
-            showStatus('publishStatus', `❌ Error: ${result.error}`, 'error');
-        }
-
-    } catch (error) {
-        console.error('Error publicando reporte:', error);
-        showStatus('publishStatus', `❌ Error: ${error.message}`, 'error');
-    } finally {
-        btn.disabled = false;
     }
 }
