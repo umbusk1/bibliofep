@@ -260,7 +260,7 @@ function createCountriesChart(data) {
 }
 
 // ============================================
-// GRÁFICO: TEMAS - MEJORADO
+// GRÁFICO: TEMAS - CORREGIDO
 // ============================================
 
 function createTopicsChart(data) {
@@ -275,13 +275,19 @@ function createTopicsChart(data) {
         section.style.display = 'block';
     }
     
-    const sorted = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
-    const labels = sorted.map(item => item.topic);
-    const values = sorted.map(item => Number(item.count));
+    // Ordenar y tomar top 10
+    const sorted = [...data].sort((a, b) => {
+        return parseInt(b.count) - parseInt(a.count);
+    }).slice(0, 10);
+    
+    // ⭐ CORRECCIÓN: Usar "topic_name" en lugar de "topic"
+    const labels = sorted.map(item => item.topic_name || item.topic || 'Sin nombre');
+    const values = sorted.map(item => parseInt(item.count) || 0);
     
     console.log('📊 Creando gráfico de temas');
     console.log('   Labels:', labels);
     console.log('   Values:', values);
+    console.log('   Tipos:', labels.map((_, i) => typeof values[i]));
     
     try {
         App.charts.topics = new Chart(ctx, {
@@ -306,7 +312,10 @@ function createTopicsChart(data) {
                 scales: {
                     x: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1 }
+                        ticks: { 
+                            stepSize: 1,
+                            precision: 0
+                        }
                     }
                 }
             }
@@ -318,7 +327,6 @@ function createTopicsChart(data) {
         console.error('❌ Error creando gráfico de temas:', error);
     }
 }
-
 // ============================================
 // GRÁFICO: PROMEDIO
 // ============================================
