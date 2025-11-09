@@ -170,35 +170,74 @@ function displayReport(report) {
 // ============================================
 
 function createCharts(statsData) {
+    console.log('=== CREANDO GRÁFICOS ===');
+    console.log('Datos recibidos:', statsData);
+    
+    // Destruir gráficos existentes
     Object.values(charts).forEach(chart => {
         if (chart) chart.destroy();
     });
     charts = {};
 
-    if (statsData.conversations_by_day && statsData.conversations_by_day.length > 0) {
-        createConversationsByDayChart(statsData.conversations_by_day);
+    // Gráfico 1: Conversaciones por día
+    const conversationsData = statsData.conversationsByDay || statsData.conversations_by_day;
+    if (conversationsData && conversationsData.length > 0) {
+        console.log('✅ Creando gráfico de conversaciones con', conversationsData.length, 'puntos');
+        createConversationsByDayChart(conversationsData);
+    } else {
+        console.warn('❌ No hay datos de conversaciones por día');
     }
 
+    // Gráfico 2: Países
     if (statsData.countries && statsData.countries.length > 0) {
+        console.log('✅ Creando gráfico de países con', statsData.countries.length, 'países');
         createCountriesChart(statsData.countries);
+    } else {
+        console.warn('❌ No hay datos de países');
     }
 
+    // Gráfico 3: Temas
+    console.log('Verificando datos de temas:', statsData.topics);
     if (statsData.topics && statsData.topics.length > 0) {
+        console.log('✅ Creando gráfico de temas con', statsData.topics.length, 'temas');
         createTopicsChart(statsData.topics);
+    } else {
+        console.warn('❌ No hay datos de temas - Ocultando sección');
+        const topicsSection = document.querySelector('#chartTopics');
+        if (topicsSection) {
+            const card = topicsSection.closest('.stat-card');
+            if (card) card.style.display = 'none';
+        }
     }
 
-    if (statsData.avg_messages_by_day && statsData.avg_messages_by_day.length > 0) {
-        createAverageMessagesChart(statsData.avg_messages_by_day);
+    // Gráfico 4: Promedio de mensajes
+    const avgData = statsData.avgMessagesByDay || statsData.avg_messages_by_day;
+    console.log('Verificando datos de promedio:', avgData);
+    if (avgData && avgData.length > 0) {
+        console.log('✅ Creando gráfico de promedio con', avgData.length, 'puntos');
+        createAverageMessagesChart(avgData);
+    } else {
+        console.warn('❌ No hay datos de promedio - Ocultando sección');
+        const avgSection = document.querySelector('#chartAverage');
+        if (avgSection) {
+            const card = avgSection.closest('.stat-card');
+            if (card) card.style.display = 'none';
+        }
     }
+    
+    console.log('=== GRÁFICOS CREADOS ===');
 }
 
 // ============================================
-// GRÁFICO: CONVERSACIONES POR DÍA
+// GRÁFICO: CONVERSACIONES POR DÍA - COLORES VIBRANTES
 // ============================================
 
 function createConversationsByDayChart(data) {
     const ctx = document.getElementById('chartConversations');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('Canvas #chartConversations no encontrado');
+        return;
+    }
     
     const labels = data.map(item => {
         const date = new Date(item.date);
@@ -214,9 +253,9 @@ function createConversationsByDayChart(data) {
             datasets: [{
                 label: 'Conversaciones',
                 data: values,
-                backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                borderColor: 'rgba(102, 126, 234, 1)',
-                borderWidth: 1
+                backgroundColor: '#667eea',
+                borderColor: '#4c63d2',
+                borderWidth: 2
             }]
         },
         options: {
@@ -232,37 +271,61 @@ function createConversationsByDayChart(data) {
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: '#e0e0e0'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        color: '#e0e0e0'
                     }
                 }
             }
         }
     });
+    
+    console.log('Gráfico de conversaciones creado');
 }
 
 // ============================================
-// GRÁFICO: DISTRIBUCIÓN POR PAÍSES
+// GRÁFICO: DISTRIBUCIÓN POR PAÍSES - COLORES SÓLIDOS
 // ============================================
 
 function createCountriesChart(data) {
     const ctx = document.getElementById('chartCountries');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('Canvas #chartCountries no encontrado');
+        return;
+    }
     
     const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
     const labels = sortedData.map(item => item.country);
     const values = sortedData.map(item => parseInt(item.count));
 
     const colors = [
-        'rgba(102, 126, 234, 0.8)',
-        'rgba(237, 100, 166, 0.8)',
-        'rgba(255, 159, 64, 0.8)',
-        'rgba(75, 192, 192, 0.8)',
-        'rgba(153, 102, 255, 0.8)',
-        'rgba(255, 99, 132, 0.8)',
-        'rgba(54, 162, 235, 0.8)',
-        'rgba(255, 206, 86, 0.8)',
-        'rgba(231, 233, 237, 0.8)',
-        'rgba(201, 203, 207, 0.8)'
+        '#667eea',
+        '#ed64a6',
+        '#f6ad55',
+        '#4fd1c5',
+        '#9f7aea',
+        '#fc8181',
+        '#63b3ed',
+        '#fbd38d',
+        '#68d391',
+        '#b794f4'
     ];
 
     charts.countries = new Chart(ctx, {
@@ -271,7 +334,9 @@ function createCountriesChart(data) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: colors.slice(0, values.length)
+                backgroundColor: colors.slice(0, values.length),
+                borderColor: '#ffffff',
+                borderWidth: 2
             }]
         },
         options: {
@@ -284,23 +349,30 @@ function createCountriesChart(data) {
                     labels: {
                         boxWidth: 15,
                         padding: 10,
+                        color: '#2c3e50',
                         font: {
-                            size: 11
+                            size: 11,
+                            weight: 'bold'
                         }
                     }
                 }
             }
         }
     });
+    
+    console.log('Gráfico de países creado');
 }
 
 // ============================================
-// GRÁFICO: TEMAS PRINCIPALES
+// GRÁFICO: TEMAS PRINCIPALES - COLORES SÓLIDOS
 // ============================================
 
 function createTopicsChart(data) {
     const ctx = document.getElementById('chartTopics');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('Canvas #chartTopics no encontrado');
+        return;
+    }
     
     const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
     const labels = sortedData.map(item => item.topic);
@@ -313,9 +385,9 @@ function createTopicsChart(data) {
             datasets: [{
                 label: 'Menciones',
                 data: values,
-                backgroundColor: 'rgba(237, 100, 166, 0.8)',
-                borderColor: 'rgba(237, 100, 166, 1)',
-                borderWidth: 1
+                backgroundColor: '#ed64a6',
+                borderColor: '#d53f8c',
+                borderWidth: 2
             }]
         },
         options: {
@@ -332,28 +404,52 @@ function createTopicsChart(data) {
                 x: {
                     beginAtZero: true,
                     ticks: {
-                        stepSize: 1
+                        stepSize: 1,
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: '#e0e0e0'
+                    }
+                },
+                y: {
+                    ticks: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        display: false
                     }
                 }
             }
         }
     });
+    
+    console.log('Gráfico de temas creado');
 }
 
 // ============================================
-// GRÁFICO: PROMEDIO DE MENSAJES POR DÍA
+// GRÁFICO: PROMEDIO DE MENSAJES - COLORES SÓLIDOS
 // ============================================
 
 function createAverageMessagesChart(data) {
     const ctx = document.getElementById('chartAverage');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('Canvas #chartAverage no encontrado');
+        return;
+    }
     
     const labels = data.map(item => {
         const date = new Date(item.date);
         return date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' });
     });
     
-    const values = data.map(item => parseFloat(item.avg_messages));
+    const values = data.map(item => parseFloat(item.avg_messages || item.avgMessages));
 
     charts.average = new Chart(ctx, {
         type: 'line',
@@ -362,11 +458,15 @@ function createAverageMessagesChart(data) {
             datasets: [{
                 label: 'Promedio',
                 data: values,
-                backgroundColor: 'rgba(237, 100, 166, 0.2)',
-                borderColor: 'rgba(237, 100, 166, 1)',
-                borderWidth: 2,
+                backgroundColor: '#ed64a6',
+                borderColor: '#d53f8c',
+                borderWidth: 3,
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointBackgroundColor: '#d53f8c',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4
             }]
         },
         options: {
@@ -380,11 +480,34 @@ function createAverageMessagesChart(data) {
             },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: '#e0e0e0'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#2c3e50',
+                        font: {
+                            size: 11
+                        }
+                    },
+                    grid: {
+                        color: '#e0e0e0'
+                    }
                 }
             }
         }
     });
+    
+    console.log('Gráfico de promedio creado');
 }
 
 // ============================================
