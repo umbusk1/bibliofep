@@ -320,57 +320,66 @@ function createCountriesChart(data) {
 }
 
 // ============================================
-// GRÁFICO: TEMAS
+// GRÁFICO: TEMAS - CORREGIDO
 // ============================================
 
 function createTopicsChart(data) {
     const ctx = document.getElementById('chartTopics');
-    if (!ctx) return;
+    if (!ctx) {
+        console.error('❌ Canvas chartTopics no encontrado');
+        return;
+    }
     
-    const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
-    const labels = sortedData.map(item => item.topic);
-    const values = sortedData.map(item => parseInt(item.count));
-
-    charts.topics = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Menciones',
-                data: values,
-                backgroundColor: '#ed64a6',
-                borderColor: '#d53f8c',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                whiteBackground: true,
-                legend: { display: false }
+    const section = document.getElementById('sectionTopics');
+    if (section) {
+        section.style.display = 'block';
+    }
+    
+    const sorted = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
+    
+    // CORRECCIÓN: Usar topic_name en lugar de topic
+    const labels = sorted.map(item => item.topic_name || item.topic);
+    const values = sorted.map(item => Number(item.count));
+    
+    console.log('📊 Creando gráfico de temas');
+    console.log('   Labels:', labels);
+    console.log('   Values:', values);
+    
+    try {
+        App.charts.topics = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Menciones',
+                    data: values,
+                    backgroundColor: '#ed64a6',
+                    borderColor: '#d53f8c',
+                    borderWidth: 2
+                }]
             },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1,
-                        color: '#2c3e50',
-                        font: { size: 12, weight: 'bold' }
-                    }
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
                 },
-                y: {
-                    ticks: {
-                        color: '#2c3e50',
-                        font: { size: 11 }
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
                     }
                 }
             }
-        }
-    });
+        });
+        
+        console.log('✅ Gráfico de temas creado correctamente');
+        
+    } catch (error) {
+        console.error('❌ Error creando gráfico de temas:', error);
+    }
 }
-
 // ============================================
 // GRÁFICO: PROMEDIO
 // ============================================
