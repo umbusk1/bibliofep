@@ -21,7 +21,7 @@
         
         .action-buttons-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 2fr; /* 1/4 + 1/4 + 1/2 = 100% */
+            grid-template-columns: 1fr 1fr 2fr; /* 25% + 25% + 50% */
             gap: 15px;
         }
         
@@ -153,21 +153,24 @@
     </div>
 </header>
 
+<!-- INPUT OCULTO PARA CARGAR JSON -->
+<input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+
 <!-- BOTONES DE ACCIÓN PRINCIPALES -->
 <div class="action-buttons-section">
     <div class="action-buttons-grid">
         
-        <!-- Botón 1: Cargar JSON (1/4) -->
-        <button class="action-btn action-btn-upload" onclick="showSection('upload')">
+        <!-- Botón 1: Cargar JSON (1/4) - Abre selector directo -->
+        <button class="action-btn action-btn-upload" onclick="openFileSelector()">
             📤 Cargar Nuevo JSON
         </button>
         
-        <!-- Botón 2: Análisis (1/4) -->
-        <button class="action-btn action-btn-analysis" onclick="showSection('analysis')">
+        <!-- Botón 2: Análisis (1/4) - Muestra sección -->
+        <button class="action-btn action-btn-analysis" onclick="showAnalysisSection()">
             🤖 Análisis con Claude AI
         </button>
         
-        <!-- Botón 3: Publicar con Input (1/2) -->
+        <!-- Botón 3: Publicar con Input (1/2) - Funciona directo -->
         <div class="publish-action-container">
             <input type="text" 
                    id="reportTitleInput" 
@@ -182,21 +185,6 @@
 
     <!-- MAIN CONTENT -->
     <main class="dashboard-main">
-        
-        <!-- SECCIÓN DE UPLOAD -->
-        <section id="uploadSection" class="upload-section card">
-            <h2>📤 Cargar Nuevo JSON</h2>
-            <div class="upload-container">
-                <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
-                <button id="selectFileBtn" class="btn-primary">Seleccionar Archivo JSON</button>
-                <span id="fileName" class="file-name"></span>
-                <button id="uploadBtn" class="btn-success" style="display: none;">Procesar JSON</button>
-            </div>
-            <div id="uploadStatus" class="status-message" style="display: none;"></div>
-            <div id="uploadProgress" class="progress-bar" style="display: none;">
-                <div class="progress-fill"></div>
-            </div>
-        </section>
 
         <!-- SECCIÓN DE ANÁLISIS DE TEMAS -->
         <section id="analysisSection" class="analyze-section card section-hidden">
@@ -339,22 +327,25 @@
     <!-- SCRIPTS -->
     <script>
         // ============================================
-        // FUNCIÓN PARA MOSTRAR/OCULTAR SECCIONES
+        // FUNCIONES DE LOS BOTONES SUPERIORES
         // ============================================
-        function showSection(section) {
-            // Ocultar todas las secciones principales
-            document.getElementById('uploadSection').classList.add('section-hidden');
-            document.getElementById('analysisSection').classList.add('section-hidden');
-            
-            // Mostrar la sección seleccionada
-            if (section === 'upload') {
-                document.getElementById('uploadSection').classList.remove('section-hidden');
-            } else if (section === 'analysis') {
-                document.getElementById('analysisSection').classList.remove('section-hidden');
+        
+        // Botón 1: Cargar JSON - Abre selector de archivos directo
+        function openFileSelector() {
+            document.getElementById('jsonFileInput').click();
+        }
+        
+        // Botón 2: Análisis - Muestra/oculta sección
+        function showAnalysisSection() {
+            const section = document.getElementById('analysisSection');
+            if (section.classList.contains('section-hidden')) {
+                section.classList.remove('section-hidden');
+            } else {
+                section.classList.add('section-hidden');
             }
         }
         
-        // Función para publicar reporte
+        // Botón 3: Publicar - Función directa
         async function publishReport() {
             const title = document.getElementById('reportTitleInput').value.trim();
             
@@ -368,9 +359,14 @@
             alert('Publicando reporte: ' + title + '\n(Función en desarrollo)');
         }
         
-        // Mostrar la sección de upload por defecto al cargar
-        document.addEventListener('DOMContentLoaded', () => {
-            showSection('upload');
+        // Event listener para cuando se selecciona un archivo
+        document.getElementById('jsonFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                console.log('Archivo seleccionado:', file.name);
+                // TODO: Aquí se procesará el archivo
+                alert('Archivo seleccionado: ' + file.name + '\n(Procesamiento en desarrollo)');
+            }
         });
     </script>
     <script src="js/dashboard.js"></script>
