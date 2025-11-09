@@ -389,3 +389,35 @@ body {
     color: #f56565;
     margin-bottom: 10px;
 }
+
+/* ============================================
+   LOGO PÚBLICO
+   ============================================ */
+
+.public-logo {
+    height: 60px;
+    width: auto;
+    margin-right: 20px;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+@media (max-width: 768px) {
+    .public-logo {
+        height: 40px;
+    }
+    
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .header-content h1 {
+        font-size: 20px;
+    }
+}
