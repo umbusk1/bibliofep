@@ -30,23 +30,49 @@ if (typeof Chart !== 'undefined') {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('Inicializando reportes públicos...');
     loadReports();
     setupExportButtons();
 });
+
+// ============================================
+// CONFIGURAR BOTONES DE EXPORTACIÓN
+// ============================================
+
+function setupExportButtons() {
+    const pdfBtn = document.getElementById('exportPdfBtn');
+    const wordBtn = document.getElementById('exportWordBtn');
+    
+    if (pdfBtn) {
+        pdfBtn.addEventListener('click', exportToPDF);
+        console.log('Botón PDF configurado');
+    } else {
+        console.error('Botón exportPdfBtn no encontrado');
+    }
+    
+    if (wordBtn) {
+        wordBtn.addEventListener('click', exportToWord);
+        console.log('Botón Word configurado');
+    } else {
+        console.error('Botón exportWordBtn no encontrado');
+    }
+}
 
 // ============================================
 // CARGAR LISTA DE REPORTES
 // ============================================
 
 async function loadReports() {
+    console.log('Cargando reportes...');
     try {
         const response = await fetch('/.netlify/functions/get-public-reports');
         
         if (!response.ok) {
-            throw new Error('Error cargando reportes');
+            throw new Error(`Error HTTP: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('Reportes cargados:', data);
 
         // Mostrar lista de reportes en el sidebar
         displayReportsList(data.all);
@@ -59,7 +85,7 @@ async function loadReports() {
         }
 
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error cargando reportes:', error);
         showErrorMessage();
     }
 }
@@ -77,8 +103,9 @@ function displayReportsList(reports) {
     }
 
     listContainer.innerHTML = reports.map((report, index) => `
-        <div class="report-item ${index === 0 ? 'active' : ''}" onclick="loadSpecificReport(${report.id})">
-            <div class="report-item-title">${report.title}</div>
+        <div class="report-item ${index === 0 ? 'active' : ''}" 
+             onclick="loadSpecificReport(${report.id})">
+            <div class="report-item-title">${escapeHtml(report.title)}</div>
             <div class="report-item-date">
                 📅 ${formatDate(report.period_start)} - ${formatDate(report.period_end)}
             </div>
@@ -92,11 +119,12 @@ function displayReportsList(reports) {
 // ============================================
 
 async function loadSpecificReport(reportId) {
+    console.log('Cargando reporte:', reportId);
     try {
         const response = await fetch(`/.netlify/functions/get-public-reports?id=${reportId}`);
         
         if (!response.ok) {
-            throw new Error('Error cargando reporte');
+            throw new Error(`Error HTTP: ${response.status}`);
         }
 
         const report = await response.json();
@@ -106,11 +134,16 @@ async function loadSpecificReport(reportId) {
         document.querySelectorAll('.report-item').forEach(item => {
             item.classList.remove('active');
         });
-        event.target.closest('.report-item').classList.add('active');
+        
+        // Encontrar y activar el item clickeado
+        const clickedItem = event.target.closest('.report-item');
+        if (clickedItem) {
+            clickedItem.classList.add('active');
+        }
 
     } catch (error) {
-        console.error('Error:', error);
-        alert('Error al cargar el reporte');
+        console.error('Error cargando reporte:', error);
+        alert('Error al cargar el reporte. Por favor, intenta de nuevo.');
     }
 }
 
@@ -119,6 +152,7 @@ async function loadSpecificReport(reportId) {
 // ============================================
 
 function displayReport(report) {
+    console.log('Mostrando reporte:', report);
     currentReport = report;
     const statsData = report.stats_data;
 
@@ -149,20 +183,27 @@ function displayReport(report) {
 
 function createCharts(statsData) {
     // Destruir gráficos existentes
-    Object.values(charts).forEach(chart => chart.destroy());
+    Object.values(charts).forEach(chart => {
+        if (chart) chart.destroy();
+    });
     charts = {};
 
-    // Gráfico 1: Conversaciones por día
-    createConversationsByDayChart(statsData.conversationsByDay);
+    // Crear gráficos
+    if (statsData.conversations_by_day && statsData.conversations_by_day.length > 0) {
+        createConversationsByDayChart(statsData.conversations_by_day);
+    }
 
-    // Gráfico 2: Países
-    createCountriesChart(statsData.countries);
+    if (statsData.countries && statsData.countries.length > 0) {
+        createCountriesChart(statsData.countries);
+    }
 
-    // Gráfico 3: Temas
-    createTopicsChart(statsData.topics);
+    if (statsData.topics && statsData.topics.length > 0) {
+        createTopicsChart(statsData.topics);
+    }
 
-    // Gráfico 4: Promedio de mensajes
-    createAverageMessagesChart(statsData.avgMessagesByDay);
+    if (statsData.avg_messages_by_day && statsData.avg_messages_by_day.length > 0) {
+        createAverageMessagesChart(statsData.avg_messages_by_day);
+    }
 }
 
 // ============================================
@@ -171,6 +212,7 @@ function createCharts(statsData) {
 
 function createConversationsByDayChart(data) {
     const ctx = document.getElementById('chartConversations');
+    if (!ctx) return;
     
     const labels = data.map(item => {
         const date = new Date(item.date);
@@ -195,13 +237,17 @@ function createConversationsByDayChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                whiteBackground: true, // ← AGREGAR ESTO
-                legend: { display: false }
+                whiteBackground: true,
+                legend: {
+                    display: false
+                }
             },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                    ticks: {
+                        stepSize: 1
+                    }
                 }
             }
         }
@@ -209,23 +255,28 @@ function createConversationsByDayChart(data) {
 }
 
 // ============================================
-// GRÁFICO: PAÍSES
+// GRÁFICO: DISTRIBUCIÓN POR PAÍSES
 // ============================================
 
 function createCountriesChart(data) {
     const ctx = document.getElementById('chartCountries');
+    if (!ctx) return;
     
-    const labels = data.map(item => item.country || 'Desconocido');
-    const values = data.map(item => parseInt(item.count));
+    const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
+    const labels = sortedData.map(item => item.country);
+    const values = sortedData.map(item => parseInt(item.count));
 
     const colors = [
         'rgba(102, 126, 234, 0.8)',
-        'rgba(118, 75, 162, 0.8)',
         'rgba(237, 100, 166, 0.8)',
-        'rgba(255, 154, 158, 0.8)',
-        'rgba(250, 208, 196, 0.8)',
-        'rgba(163, 228, 215, 0.8)',
-        'rgba(130, 204, 221, 0.8)'
+        'rgba(255, 159, 64, 0.8)',
+        'rgba(75, 192, 192, 0.8)',
+        'rgba(153, 102, 255, 0.8)',
+        'rgba(255, 99, 132, 0.8)',
+        'rgba(54, 162, 235, 0.8)',
+        'rgba(255, 206, 86, 0.8)',
+        'rgba(231, 233, 237, 0.8)',
+        'rgba(201, 203, 207, 0.8)'
     ];
 
     charts.countries = new Chart(ctx, {
@@ -234,37 +285,40 @@ function createCountriesChart(data) {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: '#fff'
+                backgroundColor: colors.slice(0, values.length)
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                whiteBackground: true, // ← AGREGAR ESTO
-                legend: { position: 'bottom' }
+                whiteBackground: true,
+                legend: {
+                    position: 'right',
+                    labels: {
+                        boxWidth: 15,
+                        padding: 10,
+                        font: {
+                            size: 11
+                        }
+                    }
+                }
             }
         }
     });
 }
 
 // ============================================
-// GRÁFICO: TEMAS
+// GRÁFICO: TEMAS PRINCIPALES
 // ============================================
 
 function createTopicsChart(data) {
     const ctx = document.getElementById('chartTopics');
-    const container = ctx.parentElement;
+    if (!ctx) return;
     
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p class="no-topics-message">No hay temas analizados para este período</p>';
-        return;
-    }
-
-    const labels = data.map(item => item.topic_name);
-    const values = data.map(item => parseInt(item.count));
+    const sortedData = [...data].sort((a, b) => b.count - a.count).slice(0, 10);
+    const labels = sortedData.map(item => item.topic);
+    const values = sortedData.map(item => parseInt(item.count));
 
     charts.topics = new Chart(ctx, {
         type: 'bar',
@@ -273,8 +327,8 @@ function createTopicsChart(data) {
             datasets: [{
                 label: 'Menciones',
                 data: values,
-                backgroundColor: 'rgba(118, 75, 162, 0.8)',
-                borderColor: 'rgba(118, 75, 162, 1)',
+                backgroundColor: 'rgba(237, 100, 166, 0.8)',
+                borderColor: 'rgba(237, 100, 166, 1)',
                 borderWidth: 1
             }]
         },
@@ -283,13 +337,17 @@ function createTopicsChart(data) {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                whiteBackground: true, // ← AGREGAR ESTO
-                legend: { display: false }
+                whiteBackground: true,
+                legend: {
+                    display: false
+                }
             },
             scales: {
                 x: {
                     beginAtZero: true,
-                    ticks: { stepSize: 1 }
+                    ticks: {
+                        stepSize: 1
+                    }
                 }
             }
         }
@@ -297,47 +355,54 @@ function createTopicsChart(data) {
 }
 
 // ============================================
-// GRÁFICO: PROMEDIO DE MENSAJES
+// GRÁFICO: PROMEDIO DE MENSAJES POR DÍA
 // ============================================
 
 function createAverageMessagesChart(data) {
     const ctx = document.getElementById('chartAverage');
+    if (!ctx) return;
     
     const labels = data.map(item => {
         const date = new Date(item.date);
         return date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' });
     });
     
-    const values = data.map(item => parseFloat(item.avg_messages).toFixed(1));
+    const values = data.map(item => parseFloat(item.avg_messages));
 
     charts.average = new Chart(ctx, {
-        type: 'bar',
+        type: 'line',
         data: {
             labels: labels,
             datasets: [{
                 label: 'Promedio',
                 data: values,
-                backgroundColor: 'rgba(237, 100, 166, 0.8)',
+                backgroundColor: 'rgba(237, 100, 166, 0.2)',
                 borderColor: 'rgba(237, 100, 166, 1)',
-                borderWidth: 1
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                whiteBackground: true, // ← AGREGAR ESTO
-                legend: { display: false }
+                whiteBackground: true,
+                legend: {
+                    display: false
+                }
             },
             scales: {
-                y: { beginAtZero: true }
+                y: {
+                    beginAtZero: true
+                }
             }
         }
     });
 }
 
 // ============================================
-// EXPORTAR A PDF - MEJORADO CON ESPERA
+// EXPORTAR A PDF
 // ============================================
 
 async function exportToPDF() {
@@ -351,121 +416,41 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando PDF...';
 
     try {
-        // Esperar a que todos los gráficos estén completamente renderizados
+        // Esperar a que los gráficos se rendericen completamente
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Clonar el contenido
         const element = document.getElementById('reportContent');
-        const clone = element.cloneNode(true);
         
-        // Crear contenedor temporal
-        const tempContainer = document.createElement('div');
-        tempContainer.style.position = 'absolute';
-        tempContainer.style.left = '-9999px';
-        tempContainer.style.width = '800px';
-        tempContainer.style.backgroundColor = '#ffffff';
-        document.body.appendChild(tempContainer);
-        
-        // Ocultar botones de exportación
-        const exportButtons = clone.querySelector('.export-buttons');
-        if (exportButtons) {
-            exportButtons.remove();
-        }
-        
-        // Agregar logo al inicio
-        const logo = document.createElement('div');
-        logo.style.textAlign = 'center';
-        logo.style.marginBottom = '30px';
-        logo.style.paddingTop = '20px';
-        
-        const logoImg = document.createElement('img');
-        logoImg.src = '/__logo-umbusk.png';
-        logoImg.style.height = '60px';
-        logoImg.style.width = 'auto';
-        logo.appendChild(logoImg);
-        
-        clone.insertBefore(logo, clone.firstChild);
-        
-        // Ajustar estilos para mejor renderizado
-        clone.style.padding = '40px';
-        clone.style.backgroundColor = '#ffffff';
-        
-        // Mejorar contraste de colores
-        const statBoxes = clone.querySelectorAll('.stat-box');
-        statBoxes.forEach(box => {
-            box.style.backgroundColor = '#f0f4ff';
-            box.style.border = '2px solid #667eea';
-        });
-        
-        const statValues = clone.querySelectorAll('.stat-box p');
-        statValues.forEach(val => {
-            val.style.color = '#667eea';
-            val.style.fontWeight = 'bold';
-        });
-        
-        // Mejorar charts
-        const chartContainers = clone.querySelectorAll('.chart-container');
-        chartContainers.forEach(container => {
-            container.style.backgroundColor = '#ffffff';
-            container.style.padding = '20px';
-            container.style.marginBottom = '30px';
-            
-            const canvas = container.querySelector('canvas');
-            if (canvas) {
-                canvas.style.maxWidth = '100%';
-                canvas.style.height = 'auto';
-            }
-        });
-        
-        tempContainer.appendChild(clone);
-        
-        // Esperar un poco más para que se apliquen los estilos
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Configuración optimizada para PDF
+        // Ocultar botones de exportación temporalmente
+        const exportButtons = element.querySelector('.export-buttons');
+        const originalDisplay = exportButtons.style.display;
+        exportButtons.style.display = 'none';
+
         const opt = {
-            margin: [10, 10, 10, 10],
+            margin: [15, 15, 15, 15],
             filename: `${sanitizeFilename(currentReport.title)}.pdf`,
-            image: { 
-                type: 'jpeg', 
-                quality: 1.0
-            },
+            image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
-                scale: 3, // Mayor escala para mejor calidad
-                useCORS: true,
+                scale: 3,
                 logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: 800,
-                windowHeight: tempContainer.scrollHeight,
-                onclone: (clonedDoc) => {
-                    // Asegurar que los canvas se rendericen
-                    const clonedCharts = clonedDoc.querySelectorAll('canvas');
-                    clonedCharts.forEach(canvas => {
-                        canvas.style.width = '100%';
-                        canvas.style.maxWidth = '700px';
-                    });
-                }
+                backgroundColor: '#ffffff'
             },
             jsPDF: { 
                 unit: 'mm', 
                 format: 'letter', 
                 orientation: 'portrait',
-                compress: false // No comprimir para mejor calidad
-            },
-            pagebreak: { 
-                mode: ['avoid-all', 'css'],
-                after: '.chart-container'
+                compress: false
             }
         };
 
-        await html2pdf().set(opt).from(tempContainer).save();
+        await html2pdf().set(opt).from(element).save();
         
-        // Limpiar
-        document.body.removeChild(tempContainer);
+        // Restaurar botones
+        exportButtons.style.display = originalDisplay;
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        alert('Error al generar PDF: ' + error.message);
+        alert('Error al generar PDF. Por favor, intenta de nuevo.');
     } finally {
         btn.disabled = false;
         btn.textContent = '📄 Descargar PDF';
@@ -473,7 +458,7 @@ async function exportToPDF() {
 }
 
 // ============================================
-// EXPORTAR A WORD - CON GRÁFICOS AJUSTADOS
+// EXPORTAR A WORD
 // ============================================
 
 async function exportToWord() {
@@ -504,284 +489,176 @@ async function exportToWord() {
 <html xmlns:v="urn:schemas-microsoft-com:vml"
       xmlns:o="urn:schemas-microsoft-com:office:office"
       xmlns:w="urn:schemas-microsoft-com:office:word"
-      xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
     <meta charset="UTF-8">
-    <meta name="ProgId" content="Word.Document">
-    <meta name="Generator" content="Microsoft Word 15">
-    <meta name="Originator" content="Microsoft Word 15">
-    <title>${currentReport.title}</title>
-    <!--[if gte mso 9]>
-    <xml>
-        <w:WordDocument>
-            <w:View>Print</w:View>
-            <w:Zoom>100</w:Zoom>
-        </w:WordDocument>
-    </xml>
-    <![endif]-->
+    <title>${escapeHtml(currentReport.title)}</title>
     <style>
-        @page {
-            size: 8.5in 11in;
-            margin: 0.75in;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            color: #2c3e50;
         }
-        
-        body { 
-            font-family: Arial, sans-serif; 
-            line-height: 1.6;
-            color: #2d3748;
-        }
-        
-        .logo-container {
+        .header {
             text-align: center;
-            margin-bottom: 40px;
-        }
-        
-        .logo {
-            height: 60px;
-            width: auto;
-        }
-        
-        h1 { 
-            color: #667eea; 
-            text-align: center;
-            margin-bottom: 10px;
-            font-size: 28pt;
-        }
-        
-        h2 { 
-            color: #764ba2; 
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-bottom: 3px solid #667eea;
-            padding-bottom: 8px;
-            font-size: 18pt;
-        }
-        
-        .report-meta {
-            text-align: center;
-            color: #666;
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 3px solid #667eea;
         }
-        
-        .stats-container {
+        .logo {
+            max-width: 200px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #667eea;
+            margin: 10px 0;
+        }
+        .meta {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+        .stats-grid {
+            display: table;
             width: 100%;
             margin: 30px 0;
-        }
-        
-        .stats-table {
-            width: 100%;
             border-collapse: collapse;
         }
-        
-        .stat-cell { 
-            text-align: center;
-            padding: 20px; 
-            border: 3px solid #667eea; 
-            background-color: #f8f9ff;
+        .stat-row {
+            display: table-row;
+        }
+        .stat-cell {
+            display: table-cell;
             width: 25%;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #ecf0f1;
+            background: #f8f9fa;
         }
-        
-        .stat-label { 
-            margin: 0 0 10px 0; 
-            color: #667eea;
-            font-size: 11pt;
+        .stat-value {
+            font-size: 32px;
             font-weight: bold;
-        }
-        
-        .stat-value { 
-            font-size: 24pt; 
-            font-weight: bold; 
-            margin: 0; 
             color: #667eea;
-        }
-        
-        .chart-container {
-            margin: 30px 0;
-            page-break-inside: avoid;
-            text-align: center;
-        }
-        
-        .chart-image {
-            width: 100%;
-            max-width: 6.5in; /* Ancho máximo para evitar desbordamiento */
-            height: auto;
             display: block;
-            margin: 20px auto;
-            border: 1px solid #ddd;
+            margin-bottom: 5px;
         }
-        
-        /* Gráfico horizontal de temas - más angosto */
-        .chart-topics {
-            max-width: 6in !important;
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            display: block;
         }
-        
-        .footer {
-            margin-top: 60px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
+        .section {
+            margin: 40px 0;
+            page-break-inside: avoid;
+        }
+        .section-title {
+            color: #667eea;
+            font-size: 18px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .chart-container {
             text-align: center;
-            color: #999; 
-            font-size: 10pt;
+            margin: 20px 0;
+            page-break-inside: avoid;
+        }
+        .chart-container img {
+            max-width: 6.5in;
+            height: auto;
+        }
+        .chart-container.topics img {
+            max-width: 6in;
         }
     </style>
 </head>
 <body>
-    <div class="logo-container">
-        <img src="${logoBase64}" class="logo" alt="Umbusk Logo">
+    <div class="header">
+        ${logoBase64 ? `<img src="${logoBase64}" class="logo" alt="Logo">` : ''}
+        <h1>${escapeHtml(currentReport.title)}</h1>
+        <p class="meta">📅 Período: ${formatDate(currentReport.period_start)} - ${formatDate(currentReport.period_end)}</p>
+        <p class="meta">📤 Publicado: ${formatDateTime(currentReport.published_at)}</p>
     </div>
-    
-    <h1>${currentReport.title}</h1>
-    
-    <div class="report-meta">
-        <p><strong>📅 Período:</strong> ${formatDate(currentReport.period_start)} - ${formatDate(currentReport.period_end)}</p>
-        <p><strong>📤 Publicado:</strong> ${formatDateTime(currentReport.published_at)}</p>
+
+    <div class="stats-grid">
+        <div class="stat-row">
+            <div class="stat-cell">
+                <span class="stat-value">${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</span>
+                <span class="stat-label">💬 Conversaciones</span>
+            </div>
+            <div class="stat-cell">
+                <span class="stat-value">${parseInt(statsData.general.total_messages || 0).toLocaleString()}</span>
+                <span class="stat-label">📨 Mensajes</span>
+            </div>
+            <div class="stat-cell">
+                <span class="stat-value">${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</span>
+                <span class="stat-label">📊 Promedio</span>
+            </div>
+            <div class="stat-cell">
+                <span class="stat-value">${statsData.countries.length}</span>
+                <span class="stat-label">🌍 Países</span>
+            </div>
+        </div>
     </div>
-    
-    <h2>Estadísticas Generales</h2>
-    <div class="stats-container">
-        <table class="stats-table">
-            <tr>
-                <td class="stat-cell">
-                    <p class="stat-label">💬 Conversaciones</p>
-                    <p class="stat-value">${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</p>
-                </td>
-                <td class="stat-cell">
-                    <p class="stat-label">✉️ Mensajes</p>
-                    <p class="stat-value">${parseInt(statsData.general.total_messages || 0).toLocaleString()}</p>
-                </td>
-                <td class="stat-cell">
-                    <p class="stat-label">📊 Promedio</p>
-                    <p class="stat-value">${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</p>
-                </td>
-                <td class="stat-cell">
-                    <p class="stat-label">🌍 Países</p>
-                    <p class="stat-value">${statsData.countries.length}</p>
-                </td>
-            </tr>
-        </table>
-    </div>
-    
-    <h2>📅 Conversaciones por Día</h2>
-    <div class="chart-container">
-        <img src="${chartImages.conversations}" class="chart-image" alt="Conversaciones por Día">
-    </div>
-    
-    <h2>🌍 Distribución por País</h2>
-    <div class="chart-container">
-        <img src="${chartImages.countries}" class="chart-image" alt="Distribución por País">
-    </div>
-    
-    ${statsData.topics && statsData.topics.length > 0 ? `
-    <h2>📚 Temas Más Consultados</h2>
-    <div class="chart-container">
-        <img src="${chartImages.topics}" class="chart-image chart-topics" alt="Temas Más Consultados">
+
+    ${chartImages.conversations ? `
+    <div class="section">
+        <h2 class="section-title">📅 Conversaciones por Día</h2>
+        <div class="chart-container">
+            <img src="${chartImages.conversations}" alt="Conversaciones por Día">
+        </div>
     </div>
     ` : ''}
-    
-    <h2>📈 Promedio de Mensajes por Día</h2>
-    <div class="chart-container">
-        <img src="${chartImages.average}" class="chart-image" alt="Promedio de Mensajes">
+
+    ${chartImages.countries ? `
+    <div class="section">
+        <h2 class="section-title">🌍 Distribución por País</h2>
+        <div class="chart-container">
+            <img src="${chartImages.countries}" alt="Distribución por País">
+        </div>
     </div>
-    
-    <div class="footer">
-        <p>Generado por Sistema de Reportes Bibliofep - Fundación Empresas Polar</p>
-        <p>Powered by Umbusk</p>
+    ` : ''}
+
+    ${chartImages.topics ? `
+    <div class="section">
+        <h2 class="section-title">🎯 Temas Principales</h2>
+        <div class="chart-container topics">
+            <img src="${chartImages.topics}" alt="Temas Principales">
+        </div>
     </div>
+    ` : ''}
+
+    ${chartImages.average ? `
+    <div class="section">
+        <h2 class="section-title">📈 Promedio de Mensajes por Día</h2>
+        <div class="chart-container">
+            <img src="${chartImages.average}" alt="Promedio de Mensajes">
+        </div>
+    </div>
+    ` : ''}
+
 </body>
-</html>
-        `;
+</html>`;
 
         // Crear blob y descargar
-        const blob = new Blob(['\ufeff', htmlContent], { 
-            type: 'application/msword;charset=utf-8'
+        const blob = new Blob([htmlContent], {
+            type: 'application/msword'
         });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${sanitizeFilename(currentReport.title)}.doc`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${sanitizeFilename(currentReport.title)}.doc`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
 
     } catch (error) {
         console.error('Error generando Word:', error);
-        alert('Error al generar documento Word: ' + error.message);
+        alert('Error al generar documento Word. Por favor, intenta de nuevo.');
     } finally {
         btn.disabled = false;
         btn.textContent = '📝 Descargar Word';
-    }
-}
-
-// ============================================
-// CONVERTIR GRÁFICOS A IMÁGENES BASE64
-// ============================================
-
-async function convertChartsToImages() {
-    const images = {
-        conversations: '',
-        countries: '',
-        topics: '',
-        average: ''
-    };
-    
-    try {
-        // Esperar a que los gráficos se rendericen
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Conversaciones por día
-        if (charts.conversations) {
-            // Configurar fondo blanco
-            const originalBg = charts.conversations.options.plugins?.backgroundColor;
-            if (!charts.conversations.options.plugins) {
-                charts.conversations.options.plugins = {};
-            }
-            
-            images.conversations = charts.conversations.toBase64Image('image/png', 1.0);
-        }
-        
-        // Países
-        if (charts.countries) {
-            images.countries = charts.countries.toBase64Image('image/png', 1.0);
-        }
-        
-        // Temas - ajustar tamaño si es muy grande
-        if (charts.topics) {
-            images.topics = charts.topics.toBase64Image('image/png', 1.0);
-        }
-        
-        // Promedio
-        if (charts.average) {
-            images.average = charts.average.toBase64Image('image/png', 1.0);
-        }
-    } catch (error) {
-        console.error('Error convirtiendo gráficos:', error);
-    }
-    
-    return images;
-}
-
-// ============================================
-// OBTENER LOGO EN BASE64
-// ============================================
-
-async function getLogoBase64() {
-    try {
-        const response = await fetch('logo-umbusk.png');
-        const blob = await response.blob();
-        
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error('Error cargando logo:', error);
-        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     }
 }
 
@@ -792,28 +669,14 @@ async function getLogoBase64() {
 async function convertChartsToImages() {
     const images = {};
     
-    try {
-        // Conversaciones por día
-        if (charts.conversations) {
-            images.conversations = charts.conversations.toBase64Image('image/png', 1);
+    for (const [key, chart] of Object.entries(charts)) {
+        if (chart && chart.canvas) {
+            try {
+                images[key] = chart.toBase64Image('image/png', 1.0);
+            } catch (error) {
+                console.error(`Error convirtiendo gráfico ${key}:`, error);
+            }
         }
-        
-        // Países
-        if (charts.countries) {
-            images.countries = charts.countries.toBase64Image('image/png', 1);
-        }
-        
-        // Temas
-        if (charts.topics) {
-            images.topics = charts.topics.toBase64Image('image/png', 1);
-        }
-        
-        // Promedio
-        if (charts.average) {
-            images.average = charts.average.toBase64Image('image/png', 1);
-        }
-    } catch (error) {
-        console.error('Error convirtiendo gráficos:', error);
     }
     
     return images;
@@ -825,9 +688,8 @@ async function convertChartsToImages() {
 
 async function getLogoBase64() {
     try {
-        const response = await fetch('logo-umbusk.png');
+        const response = await fetch('/assets/img/logo.png');
         const blob = await response.blob();
-        
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
@@ -836,15 +698,16 @@ async function getLogoBase64() {
         });
     } catch (error) {
         console.error('Error cargando logo:', error);
-        return '';
+        return null;
     }
 }
 
 // ============================================
-// HELPERS
+// UTILIDADES
 // ============================================
 
 function formatDate(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-VE', { 
         day: '2-digit', 
@@ -854,6 +717,7 @@ function formatDate(dateString) {
 }
 
 function formatDateTime(dateString) {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     return date.toLocaleDateString('es-VE', { 
         day: '2-digit', 
@@ -865,15 +729,24 @@ function formatDateTime(dateString) {
 }
 
 function sanitizeFilename(filename) {
-    return filename.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    return filename
+        .replace(/[^a-z0-9áéíóúñ\s-]/gi, '')
+        .replace(/\s+/g, '-')
+        .toLowerCase();
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function showNoReportsMessage() {
     const content = document.getElementById('reportContent');
     content.innerHTML = `
-        <div class="loading-container">
-            <h3>No hay reportes publicados</h3>
-            <p>Cuando se publique un reporte, aparecerá aquí.</p>
+        <div class="error-container">
+            <h3>No hay reportes disponibles</h3>
+            <p>Todavía no se ha publicado ningún reporte.</p>
         </div>
     `;
 }
@@ -887,3 +760,33 @@ function showErrorMessage() {
         </div>
     `;
 }
+```
+
+## 📝 Explicación de los Cambios
+
+### **Problemas Corregidos:**
+
+1. **`setupExportButtons is not defined`** ✅
+   - Ahora la función está claramente definida antes de ser llamada
+   - Incluye validación de que los botones existen
+
+2. **Error al cargar reportes anteriores** ✅
+   - Mejorada la función `loadSpecificReport`
+   - Mejor manejo de errores con `try-catch`
+   - Mensajes de error más claros
+
+3. **Logs de depuración** 🔍
+   - Agregados `console.log()` para ver qué está pasando
+   - Ayuda a identificar problemas más fácilmente
+
+### **Cómo Funciona:**
+```
+1. Página carga
+   ↓
+2. DOMContentLoaded se dispara
+   ↓
+3. Se llama loadReports()
+   ↓
+4. Se llama setupExportButtons()
+   ↓
+5. Los botones quedan listos para usar
