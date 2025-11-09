@@ -321,54 +321,10 @@
 
     <!-- FOOTER -->
     <footer class="dashboard-footer">
-        <p>Fundación Empresas Polar - Bibliofep © 2025</p>
+        <p>Fundación Empresas Polar - Bibliofep © 2025
+        <br>Vibe-coded by Umbusk</p>
     </footer>
 
-    <!-- SCRIPTS -->
-    <script>
-        // ============================================
-        // FUNCIONES DE LOS BOTONES SUPERIORES
-        // ============================================
-        
-        // Botón 1: Cargar JSON - Abre selector de archivos directo
-        function openFileSelector() {
-            document.getElementById('jsonFileInput').click();
-        }
-        
-        // Botón 2: Análisis - Muestra/oculta sección
-        function showAnalysisSection() {
-            const section = document.getElementById('analysisSection');
-            if (section.classList.contains('section-hidden')) {
-                section.classList.remove('section-hidden');
-            } else {
-                section.classList.add('section-hidden');
-            }
-        }
-        
-        // Botón 3: Publicar - Función directa
-        async function publishReport() {
-            const title = document.getElementById('reportTitleInput').value.trim();
-            
-            if (!title) {
-                alert('Por favor escribe un título para el reporte');
-                return;
-            }
-            
-            // TODO: Aquí irá la llamada real a la función de Netlify
-            console.log('Publicando reporte:', title);
-            alert('Publicando reporte: ' + title + '\n(Función en desarrollo)');
-        }
-        
-        // Event listener para cuando se selecciona un archivo
-        document.getElementById('jsonFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                console.log('Archivo seleccionado:', file.name);
-                // TODO: Aquí se procesará el archivo
-                alert('Archivo seleccionado: ' + file.name + '\n(Procesamiento en desarrollo)');
-            }
-        });
-    </script>
     <script src="js/dashboard.js"></script>
     
 </body>
