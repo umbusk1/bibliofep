@@ -467,21 +467,45 @@ function createCountriesChart(data) {
 }
 
 // ============================================
-// GRÁFICO: TEMAS MÁS CONSULTADOS
+// GRÁFICO: TEMAS MÁS CONSULTADOS - CORREGIDO
 // ============================================
 
 function createTopicsChart(data) {
-    const ctx = document.getElementById('topicsChart');
+    const canvas = document.getElementById('topicsChart');
+    const container = canvas.parentElement;
     
-    if (data.length === 0) {
-        ctx.parentElement.innerHTML = '<p class="no-data">No hay temas analizados. Usa el botón "Analizar Temas" para generar este gráfico.</p>';
+    // Destruir gráfico anterior si existe
+    if (chartsInstances.topics) {
+        chartsInstances.topics.destroy();
+        delete chartsInstances.topics;
+    }
+    
+    if (!data || data.length === 0) {
+        // Reemplazar canvas con mensaje
+        canvas.style.display = 'none';
+        
+        // Buscar si ya existe un mensaje
+        let message = container.querySelector('.no-data');
+        if (!message) {
+            message = document.createElement('p');
+            message.className = 'no-data';
+            message.textContent = 'No hay temas analizados. Usa el botón "Analizar Temas" para generar este gráfico.';
+            container.appendChild(message);
+        }
         return;
+    }
+    
+    // Mostrar canvas y eliminar mensaje si existe
+    canvas.style.display = 'block';
+    const existingMessage = container.querySelector('.no-data');
+    if (existingMessage) {
+        existingMessage.remove();
     }
 
     const labels = data.map(item => item.topic_name);
     const values = data.map(item => parseInt(item.count));
 
-    chartsInstances.topics = new Chart(ctx, {
+    chartsInstances.topics = new Chart(canvas, {
         type: 'bar',
         data: {
             labels: labels,
