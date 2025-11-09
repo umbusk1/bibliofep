@@ -313,16 +313,7 @@ function createAverageMessagesChart(data) {
 }
 
 // ============================================
-// EXPORTAR A PDF
-// ============================================
-
-function setupExportButtons() {
-    document.getElementById('exportPdfBtn').addEventListener('click', exportToPDF);
-    document.getElementById('exportWordBtn').addEventListener('click', exportToWord);
-}
-
-// ============================================
-// EXPORTAR A PDF - MEJORADO
+// EXPORTAR A PDF - MEJORADO CON ESPERA
 // ============================================
 
 async function exportToPDF() {
@@ -336,58 +327,121 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando PDF...';
 
     try {
-        // Clonar el elemento para no afectar la visualización
+        // Esperar a que todos los gráficos estén completamente renderizados
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Clonar el contenido
         const element = document.getElementById('reportContent');
         const clone = element.cloneNode(true);
         
-        // Ocultar botones de exportación en el clon
+        // Crear contenedor temporal
+        const tempContainer = document.createElement('div');
+        tempContainer.style.position = 'absolute';
+        tempContainer.style.left = '-9999px';
+        tempContainer.style.width = '800px';
+        tempContainer.style.backgroundColor = '#ffffff';
+        document.body.appendChild(tempContainer);
+        
+        // Ocultar botones de exportación
         const exportButtons = clone.querySelector('.export-buttons');
         if (exportButtons) {
-            exportButtons.style.display = 'none';
+            exportButtons.remove();
         }
         
-        // Agregar logo al inicio del reporte
+        // Agregar logo al inicio
         const logo = document.createElement('div');
         logo.style.textAlign = 'center';
         logo.style.marginBottom = '30px';
-        logo.innerHTML = `<img src="/__logo-umbusk.png" style="height: 80px; width: auto;">`;
+        logo.style.paddingTop = '20px';
+        
+        const logoImg = document.createElement('img');
+        logoImg.src = '/__logo-umbusk.png';
+        logoImg.style.height = '60px';
+        logoImg.style.width = 'auto';
+        logo.appendChild(logoImg);
+        
         clone.insertBefore(logo, clone.firstChild);
         
-        // Configuración mejorada para PDF
+        // Ajustar estilos para mejor renderizado
+        clone.style.padding = '40px';
+        clone.style.backgroundColor = '#ffffff';
+        
+        // Mejorar contraste de colores
+        const statBoxes = clone.querySelectorAll('.stat-box');
+        statBoxes.forEach(box => {
+            box.style.backgroundColor = '#f0f4ff';
+            box.style.border = '2px solid #667eea';
+        });
+        
+        const statValues = clone.querySelectorAll('.stat-box p');
+        statValues.forEach(val => {
+            val.style.color = '#667eea';
+            val.style.fontWeight = 'bold';
+        });
+        
+        // Mejorar charts
+        const chartContainers = clone.querySelectorAll('.chart-container');
+        chartContainers.forEach(container => {
+            container.style.backgroundColor = '#ffffff';
+            container.style.padding = '20px';
+            container.style.marginBottom = '30px';
+            
+            const canvas = container.querySelector('canvas');
+            if (canvas) {
+                canvas.style.maxWidth = '100%';
+                canvas.style.height = 'auto';
+            }
+        });
+        
+        tempContainer.appendChild(clone);
+        
+        // Esperar un poco más para que se apliquen los estilos
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Configuración optimizada para PDF
         const opt = {
-            margin: [15, 15, 15, 15],
+            margin: [10, 10, 10, 10],
             filename: `${sanitizeFilename(currentReport.title)}.pdf`,
             image: { 
                 type: 'jpeg', 
-                quality: 1 
+                quality: 1.0
             },
             html2canvas: { 
-                scale: 2,
+                scale: 3, // Mayor escala para mejor calidad
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff',
-                // Forzar renderizado de canvas (gráficos)
-                allowTaint: true,
-                foreignObjectRendering: false
+                windowWidth: 800,
+                windowHeight: tempContainer.scrollHeight,
+                onclone: (clonedDoc) => {
+                    // Asegurar que los canvas se rendericen
+                    const clonedCharts = clonedDoc.querySelectorAll('canvas');
+                    clonedCharts.forEach(canvas => {
+                        canvas.style.width = '100%';
+                        canvas.style.maxWidth = '700px';
+                    });
+                }
             },
             jsPDF: { 
                 unit: 'mm', 
                 format: 'letter', 
                 orientation: 'portrait',
-                compress: true
+                compress: false // No comprimir para mejor calidad
             },
             pagebreak: { 
-                mode: ['avoid-all', 'css', 'legacy'],
+                mode: ['avoid-all', 'css'],
                 after: '.chart-container'
             }
         };
 
-        // Crear PDF desde el clon
-        await html2pdf().set(opt).from(clone).save();
+        await html2pdf().set(opt).from(tempContainer).save();
+        
+        // Limpiar
+        document.body.removeChild(tempContainer);
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        alert('Error al generar PDF');
+        alert('Error al generar PDF: ' + error.message);
     } finally {
         btn.disabled = false;
         btn.textContent = '📄 Descargar PDF';
@@ -395,7 +449,7 @@ async function exportToPDF() {
 }
 
 // ============================================
-// EXPORTAR A WORD - CON GRÁFICOS
+// EXPORTAR A WORD - CON GRÁFICOS AJUSTADOS
 // ============================================
 
 async function exportToWord() {
@@ -411,42 +465,75 @@ async function exportToWord() {
     try {
         const statsData = currentReport.stats_data;
         
+        // Esperar a que los gráficos se rendericen
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         // Convertir gráficos a imágenes
         const chartImages = await convertChartsToImages();
         
-        // Crear HTML para Word con gráficos
+        // Obtener logo
+        const logoBase64 = await getLogoBase64();
+        
+        // Crear HTML para Word
         let htmlContent = `
 <!DOCTYPE html>
-<html>
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+      xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns:m="http://schemas.microsoft.com/office/2004/12/omml"
+      xmlns="http://www.w3.org/TR/REC-html40">
 <head>
     <meta charset="UTF-8">
+    <meta name="ProgId" content="Word.Document">
+    <meta name="Generator" content="Microsoft Word 15">
+    <meta name="Originator" content="Microsoft Word 15">
     <title>${currentReport.title}</title>
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
     <style>
+        @page {
+            size: 8.5in 11in;
+            margin: 0.75in;
+        }
+        
         body { 
             font-family: Arial, sans-serif; 
-            margin: 40px;
             line-height: 1.6;
+            color: #2d3748;
         }
+        
         .logo-container {
             text-align: center;
             margin-bottom: 40px;
         }
+        
         .logo {
-            height: 80px;
+            height: 60px;
             width: auto;
         }
+        
         h1 { 
             color: #667eea; 
             text-align: center;
             margin-bottom: 10px;
+            font-size: 28pt;
         }
+        
         h2 { 
             color: #764ba2; 
             margin-top: 30px;
             margin-bottom: 15px;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 3px solid #667eea;
             padding-bottom: 8px;
+            font-size: 18pt;
         }
+        
         .report-meta {
             text-align: center;
             color: #666;
@@ -454,75 +541,72 @@ async function exportToWord() {
             padding-bottom: 20px;
             border-bottom: 1px solid #ddd;
         }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+        
+        .stats-container {
+            width: 100%;
             margin: 30px 0;
         }
-        .stat-box { 
+        
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .stat-cell { 
             text-align: center;
             padding: 20px; 
-            border: 2px solid #667eea; 
-            border-radius: 8px;
-            background: #f8f9ff;
+            border: 3px solid #667eea; 
+            background-color: #f8f9ff;
+            width: 25%;
         }
-        .stat-box h3 { 
+        
+        .stat-label { 
             margin: 0 0 10px 0; 
             color: #667eea;
-            font-size: 14px;
+            font-size: 11pt;
+            font-weight: bold;
         }
-        .stat-box p { 
-            font-size: 28px; 
+        
+        .stat-value { 
+            font-size: 24pt; 
             font-weight: bold; 
             margin: 0; 
             color: #667eea;
         }
+        
         .chart-container {
             margin: 30px 0;
             page-break-inside: avoid;
+            text-align: center;
         }
+        
         .chart-image {
             width: 100%;
-            max-width: 700px;
+            max-width: 6.5in; /* Ancho máximo para evitar desbordamiento */
             height: auto;
             display: block;
             margin: 20px auto;
             border: 1px solid #ddd;
-            border-radius: 8px;
         }
-        table { 
-            border-collapse: collapse; 
-            width: 100%; 
-            margin: 20px 0;
-            display: none; /* Ocultamos tablas ya que tenemos gráficos */
+        
+        /* Gráfico horizontal de temas - más angosto */
+        .chart-topics {
+            max-width: 6in !important;
         }
-        th, td { 
-            border: 1px solid #ddd; 
-            padding: 12px; 
-            text-align: left; 
-        }
-        th { 
-            background-color: #667eea; 
-            color: white; 
-            font-weight: bold;
-        }
-        tr:nth-child(even) {
-            background-color: #f8f9ff;
-        }
+        
         .footer {
             margin-top: 60px;
             padding-top: 20px;
             border-top: 1px solid #ddd;
             text-align: center;
             color: #999; 
-            font-size: 12px;
+            font-size: 10pt;
         }
     </style>
 </head>
 <body>
     <div class="logo-container">
-        <img src="${await getLogoBase64()}" class="logo" alt="Umbusk Logo">
+        <img src="${logoBase64}" class="logo" alt="Umbusk Logo">
     </div>
     
     <h1>${currentReport.title}</h1>
@@ -533,45 +617,49 @@ async function exportToWord() {
     </div>
     
     <h2>Estadísticas Generales</h2>
-    <div class="stats-grid">
-        <div class="stat-box">
-            <h3>💬 Conversaciones</h3>
-            <p>${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</p>
-        </div>
-        <div class="stat-box">
-            <h3>✉️ Mensajes</h3>
-            <p>${parseInt(statsData.general.total_messages || 0).toLocaleString()}</p>
-        </div>
-        <div class="stat-box">
-            <h3>📊 Promedio</h3>
-            <p>${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</p>
-        </div>
-        <div class="stat-box">
-            <h3>🌍 Países</h3>
-            <p>${statsData.countries.length}</p>
-        </div>
+    <div class="stats-container">
+        <table class="stats-table">
+            <tr>
+                <td class="stat-cell">
+                    <p class="stat-label">💬 Conversaciones</p>
+                    <p class="stat-value">${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</p>
+                </td>
+                <td class="stat-cell">
+                    <p class="stat-label">✉️ Mensajes</p>
+                    <p class="stat-value">${parseInt(statsData.general.total_messages || 0).toLocaleString()}</p>
+                </td>
+                <td class="stat-cell">
+                    <p class="stat-label">📊 Promedio</p>
+                    <p class="stat-value">${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</p>
+                </td>
+                <td class="stat-cell">
+                    <p class="stat-label">🌍 Países</p>
+                    <p class="stat-value">${statsData.countries.length}</p>
+                </td>
+            </tr>
+        </table>
     </div>
     
     <h2>📅 Conversaciones por Día</h2>
     <div class="chart-container">
-        <img src="${chartImages.conversations}" class="chart-image" alt="Gráfico de Conversaciones por Día">
+        <img src="${chartImages.conversations}" class="chart-image" alt="Conversaciones por Día">
     </div>
     
     <h2>🌍 Distribución por País</h2>
     <div class="chart-container">
-        <img src="${chartImages.countries}" class="chart-image" alt="Gráfico de Países">
+        <img src="${chartImages.countries}" class="chart-image" alt="Distribución por País">
     </div>
     
     ${statsData.topics && statsData.topics.length > 0 ? `
     <h2>📚 Temas Más Consultados</h2>
     <div class="chart-container">
-        <img src="${chartImages.topics}" class="chart-image" alt="Gráfico de Temas">
+        <img src="${chartImages.topics}" class="chart-image chart-topics" alt="Temas Más Consultados">
     </div>
     ` : ''}
     
     <h2>📈 Promedio de Mensajes por Día</h2>
     <div class="chart-container">
-        <img src="${chartImages.average}" class="chart-image" alt="Gráfico de Promedio">
+        <img src="${chartImages.average}" class="chart-image" alt="Promedio de Mensajes">
     </div>
     
     <div class="footer">
@@ -583,8 +671,8 @@ async function exportToWord() {
         `;
 
         // Crear blob y descargar
-        const blob = new Blob([htmlContent], { 
-            type: 'application/vnd.ms-word'
+        const blob = new Blob(['\ufeff', htmlContent], { 
+            type: 'application/msword;charset=utf-8'
         });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -597,10 +685,79 @@ async function exportToWord() {
 
     } catch (error) {
         console.error('Error generando Word:', error);
-        alert('Error al generar documento Word');
+        alert('Error al generar documento Word: ' + error.message);
     } finally {
         btn.disabled = false;
         btn.textContent = '📝 Descargar Word';
+    }
+}
+
+// ============================================
+// CONVERTIR GRÁFICOS A IMÁGENES BASE64
+// ============================================
+
+async function convertChartsToImages() {
+    const images = {
+        conversations: '',
+        countries: '',
+        topics: '',
+        average: ''
+    };
+    
+    try {
+        // Esperar a que los gráficos se rendericen
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Conversaciones por día
+        if (charts.conversations) {
+            // Configurar fondo blanco
+            const originalBg = charts.conversations.options.plugins?.backgroundColor;
+            if (!charts.conversations.options.plugins) {
+                charts.conversations.options.plugins = {};
+            }
+            
+            images.conversations = charts.conversations.toBase64Image('image/png', 1.0);
+        }
+        
+        // Países
+        if (charts.countries) {
+            images.countries = charts.countries.toBase64Image('image/png', 1.0);
+        }
+        
+        // Temas - ajustar tamaño si es muy grande
+        if (charts.topics) {
+            images.topics = charts.topics.toBase64Image('image/png', 1.0);
+        }
+        
+        // Promedio
+        if (charts.average) {
+            images.average = charts.average.toBase64Image('image/png', 1.0);
+        }
+    } catch (error) {
+        console.error('Error convirtiendo gráficos:', error);
+    }
+    
+    return images;
+}
+
+// ============================================
+// OBTENER LOGO EN BASE64
+// ============================================
+
+async function getLogoBase64() {
+    try {
+        const response = await fetch('logo-umbusk.png');
+        const blob = await response.blob();
+        
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error('Error cargando logo:', error);
+        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     }
 }
 
