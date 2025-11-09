@@ -20,7 +20,6 @@ const whiteBackgroundPlugin = {
     }
 };
 
-// Registrar plugin globalmente
 if (typeof Chart !== 'undefined') {
     Chart.register(whiteBackgroundPlugin);
 }
@@ -29,7 +28,7 @@ if (typeof Chart !== 'undefined') {
 // INICIALIZACIÓN
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     console.log('Inicializando reportes públicos...');
     loadReports();
     setupExportButtons();
@@ -46,15 +45,11 @@ function setupExportButtons() {
     if (pdfBtn) {
         pdfBtn.addEventListener('click', exportToPDF);
         console.log('Botón PDF configurado');
-    } else {
-        console.error('Botón exportPdfBtn no encontrado');
     }
     
     if (wordBtn) {
         wordBtn.addEventListener('click', exportToWord);
         console.log('Botón Word configurado');
-    } else {
-        console.error('Botón exportWordBtn no encontrado');
     }
 }
 
@@ -68,16 +63,14 @@ async function loadReports() {
         const response = await fetch('/.netlify/functions/get-public-reports');
         
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error('Error HTTP: ' + response.status);
         }
 
         const data = await response.json();
         console.log('Reportes cargados:', data);
 
-        // Mostrar lista de reportes en el sidebar
         displayReportsList(data.all);
 
-        // Cargar el reporte más reciente
         if (data.latest) {
             displayReport(data.latest);
         } else {
@@ -102,16 +95,20 @@ function displayReportsList(reports) {
         return;
     }
 
-    listContainer.innerHTML = reports.map((report, index) => `
-        <div class="report-item ${index === 0 ? 'active' : ''}" 
-             onclick="loadSpecificReport(${report.id})">
-            <div class="report-item-title">${escapeHtml(report.title)}</div>
-            <div class="report-item-date">
-                📅 ${formatDate(report.period_start)} - ${formatDate(report.period_end)}
+    listContainer.innerHTML = reports.map((report, index) => {
+        const isActive = index === 0 ? 'active' : '';
+        const badge = report.is_latest ? '<span class="report-item-badge">Más reciente</span>' : '';
+        
+        return `
+            <div class="report-item ${isActive}" onclick="loadSpecificReport(${report.id})">
+                <div class="report-item-title">${escapeHtml(report.title)}</div>
+                <div class="report-item-date">
+                    📅 ${formatDate(report.period_start)} - ${formatDate(report.period_end)}
+                </div>
+                ${badge}
             </div>
-            ${report.is_latest ? '<span class="report-item-badge">Más reciente</span>' : ''}
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ============================================
@@ -121,29 +118,29 @@ function displayReportsList(reports) {
 async function loadSpecificReport(reportId) {
     console.log('Cargando reporte:', reportId);
     try {
-        const response = await fetch(`/.netlify/functions/get-public-reports?id=${reportId}`);
+        const response = await fetch('/.netlify/functions/get-public-reports?id=' + reportId);
         
         if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
+            throw new Error('Error HTTP: ' + response.status);
         }
 
         const report = await response.json();
         displayReport(report);
 
-        // Actualizar item activo en la lista
         document.querySelectorAll('.report-item').forEach(item => {
             item.classList.remove('active');
         });
         
-        // Encontrar y activar el item clickeado
-        const clickedItem = event.target.closest('.report-item');
-        if (clickedItem) {
-            clickedItem.classList.add('active');
+        if (event && event.target) {
+            const clickedItem = event.target.closest('.report-item');
+            if (clickedItem) {
+                clickedItem.classList.add('active');
+            }
         }
 
     } catch (error) {
         console.error('Error cargando reporte:', error);
-        alert('Error al cargar el reporte. Por favor, intenta de nuevo.');
+        alert('Error al cargar el reporte');
     }
 }
 
@@ -156,24 +153,15 @@ function displayReport(report) {
     currentReport = report;
     const statsData = report.stats_data;
 
-    // Actualizar header del reporte
     document.getElementById('reportTitle').textContent = report.title;
-    document.getElementById('reportPeriod').textContent = 
-        `📅 Período: ${formatDate(report.period_start)} - ${formatDate(report.period_end)}`;
-    document.getElementById('reportDate').textContent = 
-        `📤 Publicado: ${formatDateTime(report.published_at)}`;
+    document.getElementById('reportPeriod').textContent = '📅 Período: ' + formatDate(report.period_start) + ' - ' + formatDate(report.period_end);
+    document.getElementById('reportDate').textContent = '📤 Publicado: ' + formatDateTime(report.published_at);
 
-    // Actualizar estadísticas generales
-    document.getElementById('statConversations').textContent = 
-        parseInt(statsData.general.total_conversations || 0).toLocaleString();
-    document.getElementById('statMessages').textContent = 
-        parseInt(statsData.general.total_messages || 0).toLocaleString();
-    document.getElementById('statAverage').textContent = 
-        parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1);
-    document.getElementById('statCountries').textContent = 
-        statsData.countries.length;
+    document.getElementById('statConversations').textContent = parseInt(statsData.general.total_conversations || 0).toLocaleString();
+    document.getElementById('statMessages').textContent = parseInt(statsData.general.total_messages || 0).toLocaleString();
+    document.getElementById('statAverage').textContent = parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1);
+    document.getElementById('statCountries').textContent = statsData.countries.length;
 
-    // Crear gráficos
     createCharts(statsData);
 }
 
@@ -182,13 +170,11 @@ function displayReport(report) {
 // ============================================
 
 function createCharts(statsData) {
-    // Destruir gráficos existentes
     Object.values(charts).forEach(chart => {
         if (chart) chart.destroy();
     });
     charts = {};
 
-    // Crear gráficos
     if (statsData.conversations_by_day && statsData.conversations_by_day.length > 0) {
         createConversationsByDayChart(statsData.conversations_by_day);
     }
@@ -416,19 +402,16 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando PDF...';
 
     try {
-        // Esperar a que los gráficos se rendericen completamente
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         const element = document.getElementById('reportContent');
-        
-        // Ocultar botones de exportación temporalmente
         const exportButtons = element.querySelector('.export-buttons');
         const originalDisplay = exportButtons.style.display;
         exportButtons.style.display = 'none';
 
         const opt = {
             margin: [15, 15, 15, 15],
-            filename: `${sanitizeFilename(currentReport.title)}.pdf`,
+            filename: sanitizeFilename(currentReport.title) + '.pdf',
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { 
                 scale: 3,
@@ -444,13 +427,11 @@ async function exportToPDF() {
         };
 
         await html2pdf().set(opt).from(element).save();
-        
-        // Restaurar botones
         exportButtons.style.display = originalDisplay;
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        alert('Error al generar PDF. Por favor, intenta de nuevo.');
+        alert('Error al generar PDF');
     } finally {
         btn.disabled = false;
         btn.textContent = '📄 Descargar PDF';
@@ -473,181 +454,20 @@ async function exportToWord() {
 
     try {
         const statsData = currentReport.stats_data;
-        
-        // Esperar a que los gráficos se rendericen
         await new Promise(resolve => setTimeout(resolve, 500));
         
-        // Convertir gráficos a imágenes
         const chartImages = await convertChartsToImages();
-        
-        // Obtener logo
         const logoBase64 = await getLogoBase64();
         
-        // Crear HTML para Word
-        let htmlContent = `
-<!DOCTYPE html>
-<html xmlns:v="urn:schemas-microsoft-com:vml"
-      xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:w="urn:schemas-microsoft-com:office:word"
-      xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-    <meta charset="UTF-8">
-    <title>${escapeHtml(currentReport.title)}</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            color: #2c3e50;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #667eea;
-        }
-        .logo {
-            max-width: 200px;
-            margin-bottom: 20px;
-        }
-        h1 {
-            color: #667eea;
-            margin: 10px 0;
-        }
-        .meta {
-            color: #7f8c8d;
-            font-size: 14px;
-            margin: 5px 0;
-        }
-        .stats-grid {
-            display: table;
-            width: 100%;
-            margin: 30px 0;
-            border-collapse: collapse;
-        }
-        .stat-row {
-            display: table-row;
-        }
-        .stat-cell {
-            display: table-cell;
-            width: 25%;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #ecf0f1;
-            background: #f8f9fa;
-        }
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-            color: #667eea;
-            display: block;
-            margin-bottom: 5px;
-        }
-        .stat-label {
-            font-size: 14px;
-            color: #7f8c8d;
-            display: block;
-        }
-        .section {
-            margin: 40px 0;
-            page-break-inside: avoid;
-        }
-        .section-title {
-            color: #667eea;
-            font-size: 18px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #ecf0f1;
-        }
-        .chart-container {
-            text-align: center;
-            margin: 20px 0;
-            page-break-inside: avoid;
-        }
-        .chart-container img {
-            max-width: 6.5in;
-            height: auto;
-        }
-        .chart-container.topics img {
-            max-width: 6in;
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        ${logoBase64 ? `<img src="${logoBase64}" class="logo" alt="Logo">` : ''}
-        <h1>${escapeHtml(currentReport.title)}</h1>
-        <p class="meta">📅 Período: ${formatDate(currentReport.period_start)} - ${formatDate(currentReport.period_end)}</p>
-        <p class="meta">📤 Publicado: ${formatDateTime(currentReport.published_at)}</p>
-    </div>
-
-    <div class="stats-grid">
-        <div class="stat-row">
-            <div class="stat-cell">
-                <span class="stat-value">${parseInt(statsData.general.total_conversations || 0).toLocaleString()}</span>
-                <span class="stat-label">💬 Conversaciones</span>
-            </div>
-            <div class="stat-cell">
-                <span class="stat-value">${parseInt(statsData.general.total_messages || 0).toLocaleString()}</span>
-                <span class="stat-label">📨 Mensajes</span>
-            </div>
-            <div class="stat-cell">
-                <span class="stat-value">${parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1)}</span>
-                <span class="stat-label">📊 Promedio</span>
-            </div>
-            <div class="stat-cell">
-                <span class="stat-value">${statsData.countries.length}</span>
-                <span class="stat-label">🌍 Países</span>
-            </div>
-        </div>
-    </div>
-
-    ${chartImages.conversations ? `
-    <div class="section">
-        <h2 class="section-title">📅 Conversaciones por Día</h2>
-        <div class="chart-container">
-            <img src="${chartImages.conversations}" alt="Conversaciones por Día">
-        </div>
-    </div>
-    ` : ''}
-
-    ${chartImages.countries ? `
-    <div class="section">
-        <h2 class="section-title">🌍 Distribución por País</h2>
-        <div class="chart-container">
-            <img src="${chartImages.countries}" alt="Distribución por País">
-        </div>
-    </div>
-    ` : ''}
-
-    ${chartImages.topics ? `
-    <div class="section">
-        <h2 class="section-title">🎯 Temas Principales</h2>
-        <div class="chart-container topics">
-            <img src="${chartImages.topics}" alt="Temas Principales">
-        </div>
-    </div>
-    ` : ''}
-
-    ${chartImages.average ? `
-    <div class="section">
-        <h2 class="section-title">📈 Promedio de Mensajes por Día</h2>
-        <div class="chart-container">
-            <img src="${chartImages.average}" alt="Promedio de Mensajes">
-        </div>
-    </div>
-    ` : ''}
-
-</body>
-</html>`;
-
-        // Crear blob y descargar
+        const htmlContent = createWordHTML(statsData, chartImages, logoBase64);
+        
         const blob = new Blob([htmlContent], {
             type: 'application/msword'
         });
         
         const link = document.createElement('a');
         link.href = URL.createObjectURL(blob);
-        link.download = `${sanitizeFilename(currentReport.title)}.doc`;
+        link.download = sanitizeFilename(currentReport.title) + '.doc';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -655,11 +475,76 @@ async function exportToWord() {
 
     } catch (error) {
         console.error('Error generando Word:', error);
-        alert('Error al generar documento Word. Por favor, intenta de nuevo.');
+        alert('Error al generar documento Word');
     } finally {
         btn.disabled = false;
         btn.textContent = '📝 Descargar Word';
     }
+}
+
+// ============================================
+// CREAR HTML PARA WORD
+// ============================================
+
+function createWordHTML(statsData, chartImages, logoBase64) {
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
+    html += '<title>' + escapeHtml(currentReport.title) + '</title>';
+    html += '<style>';
+    html += 'body { font-family: Arial, sans-serif; margin: 40px; color: #2c3e50; }';
+    html += '.header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 3px solid #667eea; }';
+    html += '.logo { max-width: 200px; margin-bottom: 20px; }';
+    html += 'h1 { color: #667eea; margin: 10px 0; }';
+    html += '.meta { color: #7f8c8d; font-size: 14px; margin: 5px 0; }';
+    html += '.stats-grid { display: table; width: 100%; margin: 30px 0; border-collapse: collapse; }';
+    html += '.stat-row { display: table-row; }';
+    html += '.stat-cell { display: table-cell; width: 25%; padding: 20px; text-align: center; border: 1px solid #ecf0f1; background: #f8f9fa; }';
+    html += '.stat-value { font-size: 32px; font-weight: bold; color: #667eea; display: block; margin-bottom: 5px; }';
+    html += '.stat-label { font-size: 14px; color: #7f8c8d; display: block; }';
+    html += '.section { margin: 40px 0; page-break-inside: avoid; }';
+    html += '.section-title { color: #667eea; font-size: 18px; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #ecf0f1; }';
+    html += '.chart-container { text-align: center; margin: 20px 0; page-break-inside: avoid; }';
+    html += '.chart-container img { max-width: 6.5in; height: auto; }';
+    html += '.chart-container.topics img { max-width: 6in; }';
+    html += '</style></head><body>';
+    
+    html += '<div class="header">';
+    if (logoBase64) {
+        html += '<img src="' + logoBase64 + '" class="logo" alt="Logo">';
+    }
+    html += '<h1>' + escapeHtml(currentReport.title) + '</h1>';
+    html += '<p class="meta">📅 Período: ' + formatDate(currentReport.period_start) + ' - ' + formatDate(currentReport.period_end) + '</p>';
+    html += '<p class="meta">📤 Publicado: ' + formatDateTime(currentReport.published_at) + '</p>';
+    html += '</div>';
+    
+    html += '<div class="stats-grid"><div class="stat-row">';
+    html += '<div class="stat-cell"><span class="stat-value">' + parseInt(statsData.general.total_conversations || 0).toLocaleString() + '</span><span class="stat-label">💬 Conversaciones</span></div>';
+    html += '<div class="stat-cell"><span class="stat-value">' + parseInt(statsData.general.total_messages || 0).toLocaleString() + '</span><span class="stat-label">📨 Mensajes</span></div>';
+    html += '<div class="stat-cell"><span class="stat-value">' + parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1) + '</span><span class="stat-label">📊 Promedio</span></div>';
+    html += '<div class="stat-cell"><span class="stat-value">' + statsData.countries.length + '</span><span class="stat-label">🌍 Países</span></div>';
+    html += '</div></div>';
+    
+    if (chartImages.conversations) {
+        html += '<div class="section"><h2 class="section-title">📅 Conversaciones por Día</h2>';
+        html += '<div class="chart-container"><img src="' + chartImages.conversations + '" alt="Conversaciones"></div></div>';
+    }
+    
+    if (chartImages.countries) {
+        html += '<div class="section"><h2 class="section-title">🌍 Distribución por País</h2>';
+        html += '<div class="chart-container"><img src="' + chartImages.countries + '" alt="Países"></div></div>';
+    }
+    
+    if (chartImages.topics) {
+        html += '<div class="section"><h2 class="section-title">🎯 Temas Principales</h2>';
+        html += '<div class="chart-container topics"><img src="' + chartImages.topics + '" alt="Temas"></div></div>';
+    }
+    
+    if (chartImages.average) {
+        html += '<div class="section"><h2 class="section-title">📈 Promedio de Mensajes por Día</h2>';
+        html += '<div class="chart-container"><img src="' + chartImages.average + '" alt="Promedio"></div></div>';
+    }
+    
+    html += '</body></html>';
+    return html;
 }
 
 // ============================================
@@ -669,12 +554,12 @@ async function exportToWord() {
 async function convertChartsToImages() {
     const images = {};
     
-    for (const [key, chart] of Object.entries(charts)) {
-        if (chart && chart.canvas) {
+    for (const key in charts) {
+        if (charts[key] && charts[key].canvas) {
             try {
-                images[key] = chart.toBase64Image('image/png', 1.0);
+                images[key] = charts[key].toBase64Image('image/png', 1.0);
             } catch (error) {
-                console.error(`Error convirtiendo gráfico ${key}:`, error);
+                console.error('Error convirtiendo gráfico ' + key + ':', error);
             }
         }
     }
@@ -692,7 +577,9 @@ async function getLogoBase64() {
         const blob = await response.blob();
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
+            reader.onloadend = function() {
+                resolve(reader.result);
+            };
             reader.onerror = reject;
             reader.readAsDataURL(blob);
         });
@@ -743,50 +630,11 @@ function escapeHtml(text) {
 
 function showNoReportsMessage() {
     const content = document.getElementById('reportContent');
-    content.innerHTML = `
-        <div class="error-container">
-            <h3>No hay reportes disponibles</h3>
-            <p>Todavía no se ha publicado ningún reporte.</p>
-        </div>
-    `;
+    content.innerHTML = '<div class="error-container"><h3>No hay reportes disponibles</h3><p>Todavía no se ha publicado ningún reporte.</p></div>';
 }
 
 function showErrorMessage() {
     const content = document.getElementById('reportContent');
-    content.innerHTML = `
-        <div class="error-container">
-            <h3>Error al cargar reportes</h3>
-            <p>Por favor, intenta recargar la página.</p>
-        </div>
-    `;
+    content.innerHTML = '<div class="error-container"><h3>Error al cargar reportes</h3><p>Por favor, intenta recargar la página.</p></div>';
 }
-```
 
-## 📝 Explicación de los Cambios
-
-### **Problemas Corregidos:**
-
-1. **`setupExportButtons is not defined`** ✅
-   - Ahora la función está claramente definida antes de ser llamada
-   - Incluye validación de que los botones existen
-
-2. **Error al cargar reportes anteriores** ✅
-   - Mejorada la función `loadSpecificReport`
-   - Mejor manejo de errores con `try-catch`
-   - Mensajes de error más claros
-
-3. **Logs de depuración** 🔍
-   - Agregados `console.log()` para ver qué está pasando
-   - Ayuda a identificar problemas más fácilmente
-
-### **Cómo Funciona:**
-```
-1. Página carga
-   ↓
-2. DOMContentLoaded se dispara
-   ↓
-3. Se llama loadReports()
-   ↓
-4. Se llama setupExportButtons()
-   ↓
-5. Los botones quedan listos para usar
