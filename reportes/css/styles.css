@@ -747,3 +747,49 @@ h1, h2, h3, h4, h5, h6 {
 .report-title-input::placeholder {
     color: var(--text-light);
 }
+
+/* ============================================
+   LOGOS
+   ============================================ */
+
+.login-logo {
+    width: 120px;
+    height: auto;
+    margin: 0 auto 20px;
+    display: block;
+}
+
+.header-logo {
+    height: 50px;
+    width: auto;
+    margin-right: 20px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.header-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-text h1 {
+    margin-bottom: 2px;
+}
+
+.header-text .subtitle {
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .header-logo {
+        height: 35px;
+    }
+    
+    .login-logo {
+        width: 100px;
+    }
+}
