@@ -6,6 +6,26 @@ let currentReport = null;
 let charts = {};
 
 // ============================================
+// PLUGIN PARA FONDO BLANCO EN GRÁFICOS
+// ============================================
+
+const whiteBackgroundPlugin = {
+    id: 'whiteBackground',
+    beforeDraw: (chart) => {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+    }
+};
+
+// Registrar plugin globalmente
+if (typeof Chart !== 'undefined') {
+    Chart.register(whiteBackgroundPlugin);
+}
+
+// ============================================
 // INICIALIZACIÓN
 // ============================================
 
