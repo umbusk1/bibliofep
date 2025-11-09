@@ -21,7 +21,7 @@
         
         .action-buttons-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 columnas iguales */
+            grid-template-columns: 1fr 1fr 2fr; /* 1/4 + 1/4 + 1/2 = 100% */
             gap: 15px;
         }
         
@@ -67,9 +67,57 @@
             box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
         }
         
-        .action-btn-publish {
+        /* Contenedor especial para el botón de publicar con input */
+        .publish-action-container {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            padding: 15px;
+            border-radius: 10px;
             box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .publish-action-container:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(79, 172, 254, 0.5);
+        }
+        
+        .publish-action-container input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            font-size: 15px;
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .publish-action-container input:focus {
+            outline: none;
+            border-color: white;
+            background: white;
+        }
+        
+        .publish-action-container input::placeholder {
+            color: #999;
+        }
+        
+        .publish-action-container button {
+            padding: 12px 25px;
+            background: white;
+            color: #4facfe;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+        
+        .publish-action-container button:hover {
+            background: #f0f9ff;
+            transform: scale(1.05);
         }
         
         .section-hidden {
@@ -79,47 +127,6 @@
         .header-logo {
             height: 50px;
             margin-right: 15px;
-        }
-        
-        /* Estilos para el input del título del reporte */
-        .publish-input-group {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .publish-input-group input {
-            flex: 1;
-            min-width: 300px;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 15px;
-        }
-        
-        .publish-input-group input:focus {
-            outline: none;
-            border-color: #4facfe;
-            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
-        }
-        
-        .publish-input-group button {
-            padding: 12px 30px;
-            background: #4facfe;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        .publish-input-group button:hover {
-            background: #3b8ed8;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
         }
     </style>
 </head>
@@ -146,18 +153,30 @@
     </div>
 </header>
 
-<!-- BOTONES DE ACCIÓN PRINCIPALES (EN FILA HORIZONTAL) -->
+<!-- BOTONES DE ACCIÓN PRINCIPALES -->
 <div class="action-buttons-section">
     <div class="action-buttons-grid">
+        
+        <!-- Botón 1: Cargar JSON (1/4) -->
         <button class="action-btn action-btn-upload" onclick="showSection('upload')">
             📤 Cargar Nuevo JSON
         </button>
+        
+        <!-- Botón 2: Análisis (1/4) -->
         <button class="action-btn action-btn-analysis" onclick="showSection('analysis')">
             🤖 Análisis con Claude AI
         </button>
-        <button class="action-btn action-btn-publish" onclick="showSection('publish')">
-            🌐 Publicar Reporte
-        </button>
+        
+        <!-- Botón 3: Publicar con Input (1/2) -->
+        <div class="publish-action-container">
+            <input type="text" 
+                   id="reportTitleInput" 
+                   placeholder="Título del reporte (ej: Reporte Octubre 2025)">
+            <button onclick="publishReport()">
+                🌐 Publicar
+            </button>
+        </div>
+        
     </div>
 </div>
 
@@ -185,24 +204,6 @@
             <p class="section-description">Analiza automáticamente los temas de las conversaciones usando Claude API</p>
             <button id="analyzeTopicsBtn" class="btn-primary">Analizar Temas</button>
             <div id="analyzeStatus" class="status-message" style="display: none;"></div>
-        </section>
-
-        <!-- SECCIÓN DE PUBLICACIÓN -->
-        <section id="publishSection" class="publish-section card section-hidden">
-            <h2>🌐 Publicar Reporte</h2>
-            <p class="section-description">Una vez que hayas revisado las estadísticas, puedes publicar este reporte para que sea visible públicamente.</p>
-            
-            <div class="publish-input-group">
-                <input type="text" 
-                       id="reportTitleInput" 
-                       placeholder="Título del reporte (ej: Reporte Octubre 2025)" 
-                       style="flex: 1;">
-                <button onclick="publishReport()">
-                    📢 Publicar Ahora
-                </button>
-            </div>
-            
-            <div id="publishStatus" class="status-message" style="display: none;"></div>
         </section>
 
         <!-- FILTROS -->
@@ -344,19 +345,16 @@
             // Ocultar todas las secciones principales
             document.getElementById('uploadSection').classList.add('section-hidden');
             document.getElementById('analysisSection').classList.add('section-hidden');
-            document.getElementById('publishSection').classList.add('section-hidden');
             
             // Mostrar la sección seleccionada
             if (section === 'upload') {
                 document.getElementById('uploadSection').classList.remove('section-hidden');
             } else if (section === 'analysis') {
                 document.getElementById('analysisSection').classList.remove('section-hidden');
-            } else if (section === 'publish') {
-                document.getElementById('publishSection').classList.remove('section-hidden');
             }
         }
         
-        // Función para publicar reporte (placeholder)
+        // Función para publicar reporte
         async function publishReport() {
             const title = document.getElementById('reportTitleInput').value.trim();
             
@@ -365,21 +363,9 @@
                 return;
             }
             
-            const statusDiv = document.getElementById('publishStatus');
-            statusDiv.style.display = 'block';
-            statusDiv.textContent = '📤 Publicando reporte...';
-            statusDiv.style.color = '#4facfe';
-            
             // TODO: Aquí irá la llamada real a la función de Netlify
-            setTimeout(() => {
-                statusDiv.textContent = '✅ Reporte publicado exitosamente';
-                statusDiv.style.color = '#10b981';
-                
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                    document.getElementById('reportTitleInput').value = '';
-                }, 3000);
-            }, 2000);
+            console.log('Publicando reporte:', title);
+            alert('Publicando reporte: ' + title + '\n(Función en desarrollo)');
         }
         
         // Mostrar la sección de upload por defecto al cargar
