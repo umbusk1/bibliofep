@@ -271,7 +271,10 @@ function createTopicsChart(data) {
     const labels = sorted.map(item => item.topic);
     const values = sorted.map(item => Number(item.count));
     
-    console.log('📊 Creando gráfico de temas con', values.length, 'elementos');
+    console.log('📊 Datos de temas:', { labels, values });
+    console.log('📊 Canvas:', ctx);
+    console.log('📊 Canvas width:', ctx.width, 'height:', ctx.height);
+    console.log('📊 Canvas visible?', ctx.offsetWidth, 'x', ctx.offsetHeight);
     
     App.charts.topics = new Chart(ctx, {
         type: 'bar',
@@ -301,7 +304,15 @@ function createTopicsChart(data) {
         }
     });
     
-    console.log('✅ Gráfico de temas creado');
+    console.log('✅ Gráfico de temas creado:', App.charts.topics);
+    
+    // DEBUGGING: Forzar tamaño del canvas
+    setTimeout(() => {
+        console.log('🔍 Después de crear, canvas size:', ctx.width, 'x', ctx.height);
+        console.log('🔍 Visible dimensions:', ctx.offsetWidth, 'x', ctx.offsetHeight);
+        console.log('🔍 Parent:', ctx.parentElement);
+        console.log('🔍 Parent computed style:', window.getComputedStyle(ctx.parentElement));
+    }, 1000);
 }
 
 // ============================================
@@ -351,7 +362,7 @@ function createAverageChart(data) {
 }
 
 // ============================================
-// EXPORTAR A PDF
+// EXPORTAR A PDF - MEJORADO CON FORMATO
 // ============================================
 
 async function exportToPDF() {
@@ -365,18 +376,15 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando...';
     
     try {
-        // Esperar renderizado
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
-        const element = document.getElementById('reportContent');
-        
-        // Ocultar botones
-        const buttons = document.querySelector('.export-buttons');
-        buttons.style.display = 'none';
+        // Crear contenedor especial para PDF
+        const pdfContent = createPDFContent();
+        document.body.appendChild(pdfContent);
         
         await html2pdf()
             .set({
-                margin: 10,
+                margin: 15,
                 filename: sanitizeFilename(App.currentReport.title) + '.pdf',
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
@@ -390,10 +398,10 @@ async function exportToPDF() {
                     orientation: 'portrait' 
                 }
             })
-            .from(element)
+            .from(pdfContent)
             .save();
         
-        buttons.style.display = '';
+        document.body.removeChild(pdfContent);
         
     } catch (error) {
         console.error('❌ Error PDF:', error);
@@ -405,91 +413,122 @@ async function exportToPDF() {
 }
 
 // ============================================
-// EXPORTAR A WORD
+// CREAR CONTENIDO OPTIMIZADO PARA PDF
 // ============================================
 
-async function exportToWord() {
-    if (!App.currentReport) {
-        alert('No hay reporte cargado');
-        return;
+function createPDFContent() {
+    const stats = App.currentReport.stats_data;
+    
+    const container = document.createElement('div');
+    container.style.cssText = 'position:absolute;left:-9999px;width:210mm;background:white;padding:20px;';
+    
+    // Header con logo y título
+    let html = `
+        <div style="text-align:center;margin-bottom:30px;border-bottom:3px solid #667eea;padding-bottom:20px;">
+            <div style="margin-bottom:15px;">
+                <img src="https://umbusk.com/wp-content/uploads/2024/10/cropped-logo-umbusk-2.png" 
+                     style="max-width:150px;height:auto;" 
+                     onerror="this.style.display='none'">
+            </div>
+            <h1 style="color:#667eea;font-size:24px;margin:10px 0;">${escapeHtml(App.currentReport.title)}</h1>
+            <p style="color:#666;font-size:14px;">📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}</p>
+            <p style="color:#666;font-size:12px;">📤 Publicado: ${formatDateTime(App.currentReport.published_at)}</p>
+        </div>
+    `;
+    
+    // Estadísticas en tabla 2x2
+    html += `
+        <table style="width:100%;margin:20px 0;border-collapse:collapse;">
+            <tr>
+                <td style="width:50%;padding:15px;text-align:center;border:2px solid #e0e0e0;">
+                    <div style="font-size:32px;color:#667eea;font-weight:bold;">${Number(stats.general.total_conversations || 0).toLocaleString()}</div>
+                    <div style="font-size:14px;color:#666;margin-top:5px;">💬 Conversaciones</div>
+                </td>
+                <td style="width:50%;padding:15px;text-align:center;border:2px solid #e0e0e0;">
+                    <div style="font-size:32px;color:#667eea;font-weight:bold;">${Number(stats.general.total_messages || 0).toLocaleString()}</div>
+                    <div style="font-size:14px;color:#666;margin-top:5px;">📨 Mensajes</div>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding:15px;text-align:center;border:2px solid #e0e0e0;">
+                    <div style="font-size:32px;color:#667eea;font-weight:bold;">${Number(stats.general.avg_messages_per_conversation || 0).toFixed(1)}</div>
+                    <div style="font-size:14px;color:#666;margin-top:5px;">📊 Promedio</div>
+                </td>
+                <td style="padding:15px;text-align:center;border:2px solid #e0e0e0;">
+                    <div style="font-size:32px;color:#667eea;font-weight:bold;">${stats.countries.length}</div>
+                    <div style="font-size:14px;color:#666;margin-top:5px;">🌍 Países</div>
+                </td>
+            </tr>
+        </table>
+    `;
+    
+    // Gráficos (más pequeños)
+    const chartImages = getChartImages();
+    
+    if (chartImages.conversations) {
+        html += `
+            <div style="margin:30px 0;page-break-inside:avoid;">
+                <h2 style="color:#667eea;font-size:18px;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #e0e0e0;">📅 Conversaciones por Día</h2>
+                <div style="text-align:center;">
+                    <img src="${chartImages.conversations}" style="max-width:100%;height:auto;max-height:250px;">
+                </div>
+            </div>
+        `;
     }
     
-    const btn = document.getElementById('btnWord');
-    btn.disabled = true;
-    btn.textContent = '⏳ Generando...';
-    
-    try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const stats = App.currentReport.stats_data;
-        const images = await convertChartsToImages();
-        
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
-        html += '<style>';
-        html += 'body{font-family:Arial;margin:30px;color:#2c3e50;}';
-        html += 'h1{color:#667eea;text-align:center;margin-bottom:10px;}';
-        html += '.meta{text-align:center;color:#666;margin-bottom:30px;font-size:14px;}';
-        html += 'table{width:100%;border-collapse:collapse;margin:20px 0;}';
-        html += 'td{padding:15px;text-align:center;border:1px solid #ddd;}';
-        html += '.stat-value{font-size:24px;font-weight:bold;color:#667eea;}';
-        html += '.stat-label{font-size:12px;color:#666;margin-top:5px;}';
-        html += 'h2{color:#667eea;margin:30px 0 15px;font-size:18px;}';
-        html += 'img{max-width:100%;height:auto;margin:10px 0;}';
-        html += '</style></head><body>';
-        
-        // Header
-        html += `<h1>${escapeHtml(App.currentReport.title)}</h1>`;
-        html += '<div class="meta">';
-        html += `<p>📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}</p>`;
-        html += `<p>📤 Publicado: ${formatDateTime(App.currentReport.published_at)}</p>`;
-        html += '</div>';
-        
-        // Stats
-        html += '<table><tr>';
-        html += `<td><div class="stat-value">${Number(stats.general.total_conversations || 0).toLocaleString()}</div><div class="stat-label">💬 Conversaciones</div></td>`;
-        html += `<td><div class="stat-value">${Number(stats.general.total_messages || 0).toLocaleString()}</div><div class="stat-label">📨 Mensajes</div></td>`;
-        html += `<td><div class="stat-value">${Number(stats.general.avg_messages_per_conversation || 0).toFixed(1)}</div><div class="stat-label">📊 Promedio</div></td>`;
-        html += `<td><div class="stat-value">${stats.countries.length}</div><div class="stat-label">🌍 Países</div></td>`;
-        html += '</tr></table>';
-        
-        // Charts
-        if (images.conversations) {
-            html += '<h2>📅 Conversaciones por Día</h2>';
-            html += `<img src="${images.conversations}" width="600">`;
-        }
-        
-        if (images.countries) {
-            html += '<h2>🌍 Distribución por País</h2>';
-            html += `<img src="${images.countries}" width="500">`;
-        }
-        
-        if (images.topics) {
-            html += '<h2>🎯 Temas Principales</h2>';
-            html += `<img src="${images.topics}" width="550">`;
-        }
-        
-        if (images.average) {
-            html += '<h2>📈 Promedio de Mensajes</h2>';
-            html += `<img src="${images.average}" width="600">`;
-        }
-        
-        html += '</body></html>';
-        
-        // Download
-        const blob = new Blob([html], { type: 'application/msword' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = sanitizeFilename(App.currentReport.title) + '.doc';
-        link.click();
-        URL.revokeObjectURL(link.href);
-        
-    } catch (error) {
-        console.error('❌ Error Word:', error);
-        alert('Error al generar documento Word');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '📝 Descargar Word';
+    if (chartImages.countries) {
+        html += `
+            <div style="margin:30px 0;page-break-inside:avoid;">
+                <h2 style="color:#667eea;font-size:18px;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #e0e0e0;">🌍 Distribución por País</h2>
+                <div style="text-align:center;">
+                    <img src="${chartImages.countries}" style="max-width:80%;height:auto;max-height:300px;">
+                </div>
+            </div>
+        `;
     }
+    
+    if (chartImages.topics) {
+        html += `
+            <div style="margin:30px 0;page-break-inside:avoid;">
+                <h2 style="color:#667eea;font-size:18px;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #e0e0e0;">🎯 Temas Principales</h2>
+                <div style="text-align:center;">
+                    <img src="${chartImages.topics}" style="max-width:90%;height:auto;max-height:280px;">
+                </div>
+            </div>
+        `;
+    }
+    
+    if (chartImages.average) {
+        html += `
+            <div style="margin:30px 0;page-break-inside:avoid;">
+                <h2 style="color:#667eea;font-size:18px;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #e0e0e0;">📈 Promedio de Mensajes por Día</h2>
+                <div style="text-align:center;">
+                    <img src="${chartImages.average}" style="max-width:100%;height:auto;max-height:250px;">
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    return container;
+}
+
+// ============================================
+// OBTENER IMÁGENES DE GRÁFICOS
+// ============================================
+
+function getChartImages() {
+    const images = {};
+    for (const [key, chart] of Object.entries(App.charts)) {
+        if (chart?.canvas) {
+            try {
+                images[key] = chart.toBase64Image('image/png', 1.0);
+            } catch (error) {
+                console.error(`Error convirtiendo ${key}:`, error);
+            }
+        }
+    }
+    return images;
 }
 
 // ============================================
