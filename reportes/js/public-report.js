@@ -445,124 +445,55 @@ async function exportToPDF() {
     btn.textContent = '⏳ Generando PDF...';
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Esperar más tiempo para asegurar renderizado completo
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         const element = document.getElementById('reportContent');
+        
+        // Ocultar botones
         const exportButtons = element.querySelector('.export-buttons');
-        exportButtons.style.display = 'none';
+        const originalDisplay = exportButtons ? exportButtons.style.display : '';
+        if (exportButtons) exportButtons.style.display = 'none';
 
+        // Configuración mejorada sin capa blanca
         const opt = {
             margin: 10,
             filename: sanitizeFilename(currentReport.title) + '.pdf',
-            image: { type: 'jpeg', quality: 1 },
+            image: { 
+                type: 'jpeg', 
+                quality: 0.95 
+            },
             html2canvas: { 
                 scale: 2,
                 useCORS: true,
+                allowTaint: true,
                 logging: false,
-                backgroundColor: '#ffffff'
+                backgroundColor: '#ffffff',
+                windowWidth: element.scrollWidth,
+                windowHeight: element.scrollHeight
             },
             jsPDF: { 
                 unit: 'mm', 
                 format: 'letter', 
-                orientation: 'portrait'
+                orientation: 'portrait',
+                hotfixes: ['px_scaling']
+            },
+            pagebreak: { 
+                mode: ['avoid-all', 'css', 'legacy'] 
             }
         };
 
         await html2pdf().set(opt).from(element).save();
-        exportButtons.style.display = '';
+        
+        // Restaurar botones
+        if (exportButtons) exportButtons.style.display = originalDisplay;
 
     } catch (error) {
         console.error('Error generando PDF:', error);
-        alert('Error al generar PDF');
+        alert('Error al generar PDF. Intenta de nuevo.');
     } finally {
         btn.disabled = false;
         btn.textContent = '📄 Descargar PDF';
-    }
-}
-
-// ============================================
-// EXPORTAR A WORD - MEJORADO
-// ============================================
-
-async function exportToWord() {
-    if (!currentReport) {
-        alert('No hay reporte cargado');
-        return;
-    }
-
-    const btn = document.getElementById('exportWordBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Generando Word...';
-
-    try {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const chartImages = await convertChartsToImages();
-        const statsData = currentReport.stats_data;
-        
-        let html = '<!DOCTYPE html><html><head><meta charset="UTF-8">';
-        html += '<style>';
-        html += 'body { font-family: Arial, sans-serif; margin: 30px; }';
-        html += 'h1 { color: #667eea; text-align: center; margin-bottom: 20px; }';
-        html += '.meta { text-align: center; color: #666; margin-bottom: 30px; }';
-        html += 'table { width: 100%; border-collapse: collapse; margin: 20px 0; }';
-        html += 'td { padding: 15px; text-align: center; border: 1px solid #ddd; }';
-        html += '.stat-value { font-size: 24px; font-weight: bold; color: #667eea; display: block; }';
-        html += '.stat-label { font-size: 12px; color: #666; }';
-        html += 'h2 { color: #667eea; margin-top: 30px; }';
-        html += 'img { max-width: 100%; height: auto; display: block; margin: 10px auto; }';
-        html += '</style></head><body>';
-        
-        html += '<h1>' + escapeHtml(currentReport.title) + '</h1>';
-        html += '<div class="meta">';
-        html += '<p>📅 Período: ' + formatDate(currentReport.period_start) + ' - ' + formatDate(currentReport.period_end) + '</p>';
-        html += '<p>📤 Publicado: ' + formatDateTime(currentReport.published_at) + '</p>';
-        html += '</div>';
-        
-        html += '<table><tr>';
-        html += '<td><span class="stat-value">' + parseInt(statsData.general.total_conversations || 0).toLocaleString() + '</span><span class="stat-label">💬 Conversaciones</span></td>';
-        html += '<td><span class="stat-value">' + parseInt(statsData.general.total_messages || 0).toLocaleString() + '</span><span class="stat-label">📨 Mensajes</span></td>';
-        html += '<td><span class="stat-value">' + parseFloat(statsData.general.avg_messages_per_conversation || 0).toFixed(1) + '</span><span class="stat-label">📊 Promedio</span></td>';
-        html += '<td><span class="stat-value">' + statsData.countries.length + '</span><span class="stat-label">🌍 Países</span></td>';
-        html += '</tr></table>';
-        
-        if (chartImages.conversations) {
-            html += '<h2>📅 Conversaciones por Día</h2>';
-            html += '<img src="' + chartImages.conversations + '" width="600">';
-        }
-        
-        if (chartImages.countries) {
-            html += '<h2>🌍 Distribución por País</h2>';
-            html += '<img src="' + chartImages.countries + '" width="500">';
-        }
-        
-        if (chartImages.topics) {
-            html += '<h2>🎯 Temas Principales</h2>';
-            html += '<img src="' + chartImages.topics + '" width="550">';
-        }
-        
-        if (chartImages.average) {
-            html += '<h2>📈 Promedio de Mensajes</h2>';
-            html += '<img src="' + chartImages.average + '" width="600">';
-        }
-        
-        html += '</body></html>';
-        
-        const blob = new Blob([html], { type: 'application/msword' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = sanitizeFilename(currentReport.title) + '.doc';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
-
-    } catch (error) {
-        console.error('Error generando Word:', error);
-        alert('Error al generar documento Word');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '📝 Descargar Word';
     }
 }
 
