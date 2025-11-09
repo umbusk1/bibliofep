@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Reportes Bibliofep</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- Chart.js desde CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+<body class="dashboard-page">
+    
+    <!-- HEADER -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>📊 Reportes Bibliofep</h1>
+                <p class="subtitle">Sistema de Análisis de Conversaciones</p>
+            </div>
+            <div class="header-right">
+                <span class="user-info">
+                    <strong id="userEmail"></strong> (<span id="userRole"></span>)
+                </span>
+                <button id="logoutBtn" class="btn-secondary">Cerrar Sesión</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-main">
+        
+        <!-- SECCIÓN DE UPLOAD -->
+        <section class="upload-section card">
+            <h2>📤 Cargar Nuevo JSON</h2>
+            <div class="upload-container">
+                <input type="file" id="jsonFileInput" accept=".json" style="display: none;">
+                <button id="selectFileBtn" class="btn-primary">Seleccionar Archivo JSON</button>
+                <span id="fileName" class="file-name"></span>
+                <button id="uploadBtn" class="btn-success" style="display: none;">Procesar JSON</button>
+            </div>
+            <div id="uploadStatus" class="status-message" style="display: none;"></div>
+            <div id="uploadProgress" class="progress-bar" style="display: none;">
+                <div class="progress-fill"></div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN DE ANÁLISIS DE TEMAS -->
+        <section class="analyze-section card">
+            <h2>🤖 Análisis de Temas con Claude AI</h2>
+            <p class="section-description">Analiza automáticamente los temas de las conversaciones usando Claude API</p>
+            <button id="analyzeTopicsBtn" class="btn-primary">Analizar Temas</button>
+            <div id="analyzeStatus" class="status-message" style="display: none;"></div>
+        </section>
+
+        <!-- FILTROS -->
+        <section class="filters-section card">
+            <h2>🔍 Filtros</h2>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="filterType">Tipo de Filtro:</label>
+                    <select id="filterType">
+                        <option value="month">Por Mes</option>
+                        <option value="range">Por Rango de Fechas</option>
+                        <option value="all">Todas las Conversaciones</option>
+                    </select>
+                </div>
+
+                <!-- Filtro por mes -->
+                <div id="monthFilter" class="filter-group">
+                    <label for="monthSelect">Mes:</label>
+                    <select id="monthSelect">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+
+                <div id="yearFilterMonth" class="filter-group">
+                    <label for="yearSelectMonth">Año:</label>
+                    <select id="yearSelectMonth">
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                    </select>
+                </div>
+
+                <!-- Filtro por rango de fechas -->
+                <div id="rangeFilter" class="filter-group" style="display: none;">
+                    <label for="startDate">Fecha Inicio:</label>
+                    <input type="date" id="startDate">
+                </div>
+
+                <div id="rangeFilterEnd" class="filter-group" style="display: none;">
+                    <label for="endDate">Fecha Fin:</label>
+                    <input type="date" id="endDate">
+                </div>
+
+                <div class="filter-group filter-actions">
+                    <button id="applyFiltersBtn" class="btn-primary">Aplicar Filtros</button>
+                    <button id="resetFiltersBtn" class="btn-secondary">Resetear</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ESTADÍSTICAS GENERALES -->
+        <section class="stats-cards">
+            <div class="stat-card">
+                <div class="stat-icon">💬</div>
+                <div class="stat-content">
+                    <h3 id="totalConversations">-</h3>
+                    <p>Total Conversaciones</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">✉️</div>
+                <div class="stat-content">
+                    <h3 id="totalMessages">-</h3>
+                    <p>Total Mensajes</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-content">
+                    <h3 id="avgMessages">-</h3>
+                    <p>Promedio Mensajes/Conv.</p>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">🌍</div>
+                <div class="stat-content">
+                    <h3 id="totalCountries">-</h3>
+                    <p>Países</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- GRÁFICOS -->
+        <section class="charts-grid">
+            
+            <!-- Gráfico 1: Conversaciones por Día -->
+            <div class="chart-card card">
+                <h3>📅 Conversaciones por Día</h3>
+                <canvas id="conversationsByDayChart"></canvas>
+            </div>
+
+            <!-- Gráfico 2: Países -->
+            <div class="chart-card card">
+                <h3>🌍 Distribución por País</h3>
+                <canvas id="countriesChart"></canvas>
+            </div>
+
+            <!-- Gráfico 3: Temas Más Consultados -->
+            <div class="chart-card card chart-full-width">
+                <h3>📚 Temas Más Consultados</h3>
+                <canvas id="topicsChart"></canvas>
+            </div>
+
+            <!-- Gráfico 4: Promedio de Mensajes por Día -->
+            <div class="chart-card card">
+                <h3>📈 Promedio de Mensajes por Día</h3>
+                <canvas id="avgMessagesChart"></canvas>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="dashboard-footer">
+        <p>Fundación Empresas Polar - Bibliofep © 2025</p>
+    </footer>
+
+    <!-- SCRIPTS -->
+    <script src="js/dashboard.js"></script>
+    
+</body>
+</html>
