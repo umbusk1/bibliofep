@@ -129,77 +129,92 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   HEADER - OPTIMIZADO PARA MÓVIL
+   HEADER - ESTILO FRONTEND
    ============================================ */
 
 .dashboard-header {
     background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
     color: white;
-    padding: 12px 0;
+    padding: 20px 0;
     box-shadow: var(--shadow-md);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
-    width: 100%;
+    /* Sin position: sticky para que no se quede fijo */
 }
 
 .header-content {
-    max-width: 100%;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 0 15px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 15px;
+    padding: 0 20px;
+    text-align: center;
 }
 
+/* Logo y título centrados */
 .header-left {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 12px;
-    flex: 1;
+    margin-bottom: 15px;
 }
 
 .header-logo {
-    height: 35px;
+    height: 50px;
     width: auto;
-    flex-shrink: 0;
 }
 
 .header-text {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    align-items: center;
 }
 
 .header-left h1 {
-    font-size: 18px;
+    font-size: 26px;
     margin: 0;
-    line-height: 1.2;
+    font-weight: 700;
 }
 
 .subtitle {
-    font-size: 12px;
+    font-size: 14px;
     opacity: 0.9;
-    margin: 0;
+    margin: 3px 0 0 0;
 }
 
+/* Info del usuario centrada debajo */
 .header-right {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 15px;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .user-info {
-    font-size: 12px;
-    display: flex;
-    flex-direction: column;
-    text-align: right;
-    line-height: 1.3;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.4;
+    opacity: 0.95;
 }
 
 .user-info strong {
+    font-weight: 600;
+}
+
+#logoutBtn {
+    padding: 8px 20px;
     font-size: 13px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+#logoutBtn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
 }
 
 /* ============================================
