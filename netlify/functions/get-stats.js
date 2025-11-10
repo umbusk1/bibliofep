@@ -152,7 +152,7 @@ exports.handler = async (event, context) => {
       paramCount += 2;
     }
 
-    topicsQuery += ` GROUP BY t.topic_name ORDER BY count DESC LIMIT 15`;
+    topicsQuery += ` GROUP BY t.topic_name ORDER BY count DESC LIMIT 10`;
 
     const topics = await pool.query(topicsQuery, queryParams);
 
