@@ -377,7 +377,7 @@ function createAverageChart(data) {
 }
 
 // ============================================
-// EXPORTAR A WORD - MEJORADO Y OPTIMIZADO
+// EXPORTAR A WORD - 2 PÁGINAS CON LOGO
 // ============================================
 
 async function exportToWord() {
@@ -397,7 +397,7 @@ async function exportToWord() {
         const stats = App.currentReport.stats_data;
         const images = await convertChartsToImages();
         
-        // Crear HTML optimizado para Word con gráficos pequeños
+        // Crear HTML para Word con estructura de 2 páginas
         let html = `
 <!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" 
@@ -421,146 +421,170 @@ async function exportToWord() {
             color: #2c3e50;
             line-height: 1.6;
         }
-        .header {
+        
+        /* === PÁGINA 1 === */
+        .page-1 {
+            page-break-after: always;
+        }
+        
+        .logo-header {
             text-align: center;
             margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #667eea;
         }
+        
         .logo {
-            max-width: 120px;
-            margin-bottom: 15px;
+            max-width: 150px;
+            margin-bottom: 20px;
         }
+        
         h1 {
             color: #667eea;
-            font-size: 24px;
+            font-size: 22px;
             margin: 10px 0;
+            text-align: center;
         }
-        .meta {
+        
+        .subtitle {
+            text-align: center;
             color: #666;
-            font-size: 13px;
-            margin: 5px 0;
+            font-size: 14px;
+            margin: 5px 0 20px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 15px;
         }
+        
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            margin: 25px 0;
         }
+        
         td {
-            padding: 12px;
+            padding: 15px;
             text-align: center;
             border: 1px solid #ddd;
             background: #fafafa;
             width: 50%;
         }
+        
         .stat-value {
-            font-size: 28px;
+            font-size: 32px;
             font-weight: bold;
             color: #667eea;
             margin-bottom: 5px;
         }
+        
         .stat-label {
-            font-size: 12px;
+            font-size: 13px;
             color: #666;
         }
+        
+        /* === SECCIONES === */
         .section {
-            margin: 25px 0;
+            margin: 30px 0;
             page-break-inside: avoid;
         }
+        
         h2 {
             color: #667eea;
-            font-size: 16px;
-            margin: 20px 0 10px;
+            font-size: 17px;
+            margin: 25px 0 15px;
             padding-bottom: 8px;
             border-bottom: 2px solid #e0e0e0;
         }
+        
         .chart-img {
             display: block;
-            margin: 15px auto;
+            margin: 20px auto;
             max-width: 100%;
             height: auto;
         }
-        .chart-small {
-            max-width: 450px;
-        }
-        .chart-medium {
-            max-width: 400px;
-        }
-        .chart-large {
-            max-width: 500px;
+        
+        /* === PÁGINA 2 === */
+        .page-2 {
+            margin-top: 0;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <img src="https://umbusk.com/wp-content/uploads/2024/10/cropped-logo-umbusk-2.png" class="logo">
-        <h1>${escapeHtml(App.currentReport.title)}</h1>
-        <p class="meta">📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}</p>
-        <p class="meta">📤 Publicado: ${formatDateTime(App.currentReport.published_at)}</p>
+    
+    <!-- ========== PÁGINA 1 ========== -->
+    <div class="page-1">
+        
+        <!-- Logo y Título -->
+        <div class="logo-header">
+            <img src="logo.png" class="logo" alt="Umbusk">
+            <h1>Reportes de Conversaciones</h1>
+            <h1>Fundación Empresas Polar - Bibliofep</h1>
+            <div class="subtitle">
+                ${escapeHtml(App.currentReport.title)}<br>
+                📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
+            </div>
+        </div>
+        
+        <!-- Estadísticas Generales -->
+        <table>
+            <tr>
+                <td>
+                    <div class="stat-value">${Number(stats.general.total_conversations || 0).toLocaleString()}</div>
+                    <div class="stat-label">💬 Conversaciones Totales</div>
+                </td>
+                <td>
+                    <div class="stat-value">${Number(stats.general.total_messages || 0).toLocaleString()}</div>
+                    <div class="stat-label">📨 Mensajes Totales</div>
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <div class="stat-value">${Number(stats.general.avg_messages_per_conversation || 0).toFixed(1)}</div>
+                    <div class="stat-label">📊 Promedio Mensajes/Conv.</div>
+                </td>
+                <td>
+                    <div class="stat-value">${stats.countries.length}</div>
+                    <div class="stat-label">🌍 Países Representados</div>
+                </td>
+            </tr>
+        </table>
+        
+        <!-- Gráfico 1: Conversaciones por Día -->
+        ${images.conversations ? `
+        <div class="section">
+            <h2>📅 Conversaciones por Día</h2>
+            <img src="${images.conversations}" class="chart-img" width="550">
+        </div>
+        ` : ''}
+        
+        <!-- Gráfico 2: Distribución por País -->
+        ${images.countries ? `
+        <div class="section">
+            <h2>🌍 Distribución por País</h2>
+            <img src="${images.countries}" class="chart-img" width="420">
+        </div>
+        ` : ''}
+        
     </div>
     
-    <table>
-        <tr>
-            <td>
-                <div class="stat-value">${Number(stats.general.total_conversations || 0).toLocaleString()}</div>
-                <div class="stat-label">💬 Conversaciones</div>
-            </td>
-            <td>
-                <div class="stat-value">${Number(stats.general.total_messages || 0).toLocaleString()}</div>
-                <div class="stat-label">📨 Mensajes</div>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <div class="stat-value">${Number(stats.general.avg_messages_per_conversation || 0).toFixed(1)}</div>
-                <div class="stat-label">📊 Promedio por Conversación</div>
-            </td>
-            <td>
-                <div class="stat-value">${stats.countries.length}</div>
-                <div class="stat-label">🌍 Países</div>
-            </td>
-        </tr>
-    </table>
-`;
-
-        // Agregar gráficos con tamaños optimizados
-        if (images.conversations) {
-            html += `
-    <div class="section">
-        <h2>📅 Conversaciones por Día</h2>
-        <img src="${images.conversations}" class="chart-img chart-large" width="500">
-    </div>
-`;
-        }
+    <!-- ========== PÁGINA 2 ========== -->
+    <div class="page-2">
         
-        if (images.countries) {
-            html += `
-    <div class="section">
-        <h2>🌍 Distribución por País (Top 10)</h2>
-        <img src="${images.countries}" class="chart-img chart-medium" width="380">
-    </div>
-`;
-        }
+        <!-- Gráfico 3: Temas Más Consultados -->
+        ${images.topics ? `
+        <div class="section">
+            <h2>🎯 Temas Más Consultados (Top 10)</h2>
+            <img src="${images.topics}" class="chart-img" width="550">
+        </div>
+        ` : ''}
         
-        if (images.topics) {
-            html += `
-    <div class="section">
-        <h2>🎯 Temas Principales (Top 10)</h2>
-        <img src="${images.topics}" class="chart-img chart-large" width="480">
-    </div>
-`;
-        }
+        <!-- Gráfico 4: Promedio de Mensajes -->
+        ${images.average ? `
+        <div class="section">
+            <h2>📈 Promedio de Mensajes por Día</h2>
+            <img src="${images.average}" class="chart-img" width="550">
+        </div>
+        ` : ''}
         
-        if (images.average) {
-            html += `
-    <div class="section">
-        <h2>📈 Promedio de Mensajes por Día</h2>
-        <img src="${images.average}" class="chart-img chart-large" width="500">
     </div>
-`;
-        }
-        
-        html += `
+    
 </body>
 </html>`;
         
@@ -577,7 +601,7 @@ async function exportToWord() {
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        console.log('✅ Documento Word generado exitosamente');
+        console.log('✅ Documento Word generado exitosamente (2 páginas)');
         
     } catch (error) {
         console.error('❌ Error generando Word:', error);
