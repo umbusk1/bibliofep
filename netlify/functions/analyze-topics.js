@@ -63,7 +63,7 @@ exports.handler = async (event, context) => {
       LEFT JOIN topics t ON c.id = t.conversation_id
       WHERE t.conversation_id IS NULL
       ORDER BY c.created_at DESC
-      LIMIT 50
+      LIMIT 20
     `);
 
     console.log(`✓ Encontradas ${conversationsResult.rows.length} conversaciones sin analizar`);
@@ -84,7 +84,7 @@ exports.handler = async (event, context) => {
 
     let totalTopicsSaved = 0;
     let conversationsAnalyzed = 0;
-    const BATCH_SIZE = 5; // Analizar de 5 en 5
+    const BATCH_SIZE = 3; // Analizar de 5 en 5
 
     // Procesar en lotes
     for (let i = 0; i < conversationsResult.rows.length; i += BATCH_SIZE) {
