@@ -318,6 +318,7 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    align-items: center;
 }
 
 .filter-group label {
