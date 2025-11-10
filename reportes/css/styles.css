@@ -626,20 +626,27 @@ h1, h2, h3, h4, h5, h6 {
 
 @media (max-width: 768px) {
     .dashboard-header {
-        padding: 10px 0;
+        padding: 15px 0;
     }
     
     .header-content {
-        padding: 0 12px;
-        gap: 10px;
+        padding: 0 15px;
     }
     
     .header-logo {
-        height: 28px;
+        height: 40px;
     }
     
     .header-left h1 {
-        font-size: 16px;
+        font-size: 20px;
+    }
+    
+    .subtitle {
+        font-size: 13px;
+    }
+    
+    .user-info {
+        font-size: 13px;
     }
     
     .subtitle {
@@ -681,15 +688,19 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (max-width: 480px) {
+    .header-logo {
+        height: 35px;
+    }
+    
     .header-left h1 {
-        font-size: 14px;
+        font-size: 18px;
     }
     
     .subtitle {
-        display: none;
+        font-size: 12px;
     }
     
-    .user-info strong {
+    .user-info {
         font-size: 12px;
     }
     
