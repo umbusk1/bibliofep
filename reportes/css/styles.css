@@ -311,7 +311,7 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 20px;
     align-items: end;
-    width: 100%;   
+    width: 80%;   
 }
 
 .filter-group {
