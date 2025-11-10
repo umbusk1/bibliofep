@@ -845,3 +845,78 @@ h1, h2, h3, h4, h5, h6 {
         width: 100px;
     }
 }
+
+/* ============================================
+   FIX: Prevenir overflow horizontal
+   ============================================ */
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.dashboard-page {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+/* ============================================
+   BOTONES DE ACCIÓN SUPERIORES - RESPONSIVE
+   ============================================ */
+
+.action-buttons-section {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.action-buttons-grid {
+    max-width: 100%;
+}
+
+@media (max-width: 968px) {
+    .action-buttons-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+    
+    .action-btn,
+    .publish-action-container {
+        width: 100% !important;
+    }
+    
+    .publish-action-container {
+        flex-direction: column !important;
+    }
+    
+    .publish-action-container input {
+        width: 100% !important;
+    }
+    
+    .publish-action-container button {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .action-buttons-section {
+        margin: 15px 10px !important;
+    }
+}
+
+/* ============================================
+   ASEGURAR QUE TODO RESPETE EL ANCHO
+   ============================================ */
+
+* {
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.dashboard-main,
+.card,
+.stats-cards,
+.charts-grid,
+.filters-grid {
+    max-width: 100%;
+    overflow-x: hidden;
+}
