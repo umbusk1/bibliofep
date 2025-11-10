@@ -1,3 +1,4 @@
+
 /* ============================================
    VARIABLES CSS
    ============================================ */
@@ -220,14 +221,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   MAIN CONTENT - CON MÁRGENES
+   MAIN CONTENT
    ============================================ */
 
 .dashboard-main {
     flex: 1;
-    max-width: 1200px;  /* Ancho máximo como el frontend */
-    margin: 30px auto;  /* Centrado con márgenes */
-    padding: 0 20px;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 30px 20px;
     width: 100%;
 }
 
@@ -346,7 +347,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   STATS CARDS - CENTRADAS
+   STATS CARDS
    ============================================ */
 
 .stats-cards {
@@ -354,7 +355,6 @@ h1, h2, h3, h4, h5, h6 {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 20px;
     margin-bottom: 30px;
-    justify-items: center;  /* Centrar cards */
 }
 
 .stat-card {
@@ -366,8 +366,6 @@ h1, h2, h3, h4, h5, h6 {
     align-items: center;
     gap: 20px;
     transition: var(--transition);
-    width: 100%;  /* Ocupar ancho disponible */
-    max-width: 350px;  /* Límite para que no queden demasiado anchos */
 }
 
 .stat-card:hover {
@@ -401,20 +399,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* ============================================
-   CHARTS GRID - CENTRADOS
+   CHARTS GRID
    ============================================ */
 
 .charts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
     gap: 25px;
-    justify-items: center;  /* Centrar gráficos */
 }
 
 .chart-card {
     min-height: 400px;
-    width: 100%;  /* Ocupar todo el ancho disponible */
-    max-width: 100%;
 }
 
 .chart-card h3 {
@@ -425,13 +420,10 @@ h1, h2, h3, h4, h5, h6 {
 
 .chart-card canvas {
     max-height: 350px;
-    margin: 0 auto;  /* Centrar canvas */
-    display: block;
 }
 
 .chart-full-width {
     grid-column: 1 / -1;
-    width: 100%;
 }
 
 .no-data {
@@ -475,12 +467,6 @@ h1, h2, h3, h4, h5, h6 {
 /* ============================================
    BOTONES
    ============================================ */
-
-.action-buttons-section {
-    max-width: 1200px;  /* Mismo ancho que el contenido */
-    margin: 20px auto;  /* Centrado */
-    padding: 0 20px;
-}
 
 .btn-primary,
 .btn-secondary,
