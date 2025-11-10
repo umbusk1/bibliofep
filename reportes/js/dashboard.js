@@ -77,9 +77,6 @@ function setupEventListeners() {
     // Upload de JSON - NUEVO: usa el input oculto directamente
     document.getElementById('jsonFileInput').addEventListener('change', handleFileSelect);
 
-    // Análisis de temas
-    document.getElementById('analyzeTopicsBtn').addEventListener('click', analyzeTopics);
-
     // Filtros
     document.getElementById('filterType').addEventListener('change', handleFilterTypeChange);
     document.getElementById('applyFiltersBtn').addEventListener('click', applyFilters);
