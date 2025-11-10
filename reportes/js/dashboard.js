@@ -238,25 +238,40 @@ async function uploadJSON(file) {
 }
 
 // ============================================
-// ANÁLISIS DE TEMAS CON CLAUDE
+// ANÁLISIS DE TEMAS CON CLAUDE - SIMPLIFICADO
 // ============================================
 
-async function analyzeTopics() {
-    const btn = document.getElementById('analyzeTopicsBtn');
-    const statusDiv = document.getElementById('analyzeStatus');
+// Función global para el botón superior - Análisis directo
+window.showAnalysisSection = async function() {
+    // No mostrar sección, ejecutar directamente
+    await analyzeCurrentTopics();
+}
 
-    btn.disabled = true;
-    showStatus('analyzeStatus', '🤖 Analizando temas con Claude AI...', 'loading');
+async function analyzeCurrentTopics() {
+    // Crear overlay de carga
+    const loadingOverlay = showLoadingOverlay('🤖 Analizando temas con Claude AI...');
 
     try {
-        // Obtener conversaciones para analizar
-        const conversationIds = await getRecentConversationIds();
+        // Obtener IDs de conversaciones actuales según filtros
+        const conversationIds = await getCurrentConversationIds();
 
         if (conversationIds.length === 0) {
-            showStatus('analyzeStatus', 'ℹ️ No hay conversaciones para analizar', 'info');
-            btn.disabled = false;
+            hideLoadingOverlay(loadingOverlay);
+            alert('ℹ️ No hay conversaciones en el período seleccionado para analizar');
             return;
         }
+
+        // Mostrar confirmación
+        const confirmMsg = `¿Analizar ${conversationIds.length} conversaciones del período seleccionado?\n\nEsto puede tomar varios minutos.`;
+        
+        hideLoadingOverlay(loadingOverlay);
+        
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        // Reabrir loading
+        const loadingOverlay2 = showLoadingOverlay(`Analizando ${conversationIds.length} conversaciones...`);
 
         // Llamar a la función de análisis
         const response = await fetch('/api/analyze-topics', {
@@ -271,34 +286,53 @@ async function analyzeTopics() {
         const result = await response.json();
 
         if (response.ok) {
-            showStatus('analyzeStatus', 
-                `✅ Análisis completado!\n` +
-                `Temas identificados: ${result.topicsAnalyzed}\n` +
-                `Guardados en BD: ${result.topicsSaved}`,
-                'success'
+            hideLoadingOverlay(loadingOverlay2);
+            alert(
+                `✅ Análisis completado!\n\n` +
+                `📊 Temas identificados: ${result.topicsAnalyzed}\n` +
+                `💾 Guardados en BD: ${result.topicsSaved}`
             );
 
             // Recargar gráficos
             setTimeout(() => {
                 applyFilters();
-            }, 2000);
+            }, 1000);
         } else {
-            showStatus('analyzeStatus', `❌ Error: ${result.error}`, 'error');
+            hideLoadingOverlay(loadingOverlay2);
+            alert(`❌ Error: ${result.error}`);
         }
 
     } catch (error) {
         console.error('Error analizando temas:', error);
-        showStatus('analyzeStatus', `❌ Error: ${error.message}`, 'error');
-    } finally {
-        btn.disabled = false;
+        alert(`❌ Error: ${error.message}`);
     }
 }
 
-// Helper para obtener IDs de conversaciones recientes
-async function getRecentConversationIds() {
-    // Por ahora retorna IDs de ejemplo
-    // En producción, consultarías la BD para obtener IDs sin análisis
-    return [];
+// Obtener IDs de conversaciones del período actual
+async function getCurrentConversationIds() {
+    try {
+        // Construir URL con los filtros actuales
+        let url = '/api/get-conversation-ids?';
+        const params = new URLSearchParams(currentFilters);
+        url += params.toString();
+
+        const response = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Error obteniendo IDs de conversaciones');
+        }
+
+        const data = await response.json();
+        return data.conversationIds || [];
+
+    } catch (error) {
+        console.error('Error obteniendo IDs:', error);
+        return [];
+    }
 }
 
 // ============================================
