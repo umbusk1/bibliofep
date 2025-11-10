@@ -455,13 +455,13 @@ async function exportToWord() {
         
         /* Tabla de estadísticas: 1 FILA x 4 COLUMNAS */
         table {
-            width: 100%;
+            width: 80%;
             border-collapse: collapse;
-            margin: 15px 0 20px;
+            margin: 1px 0 2px;
         }
         
         td {
-            padding: 12px 8px;
+            padding: 1px 1px;
             text-align: center;
             border: 1px solid #ddd;
             background: #fafafa;
@@ -469,14 +469,14 @@ async function exportToWord() {
         }
         
         .stat-value {
-            font-size: 26px;
+            font-size: 16px;
             font-weight: bold;
             color: #667eea;
-            margin-bottom: 5px;
+            margin-bottom: 1px;
         }
         
         .stat-label {
-            font-size: 11px;
+            font-size: 16px;
             color: #666;
         }
         
@@ -513,9 +513,8 @@ async function exportToWord() {
     <div class="page-1">
         
         <!-- Título -->
-        <div>
-            <h3>Fundación Empresas Polar - Bibliofep</h3>
-            <div class="subtitle">
+        <div class="subtitle">
+            <h2>Fundación Empresas Polar - Bibliofep</h2>
             Reportes de Conversaciones:           
                  ${escapeHtml(App.currentReport.title)} 📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
             </div>
