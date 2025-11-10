@@ -7,14 +7,61 @@
     <link rel="stylesheet" href="css/public-v2.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        /* Estilos para el logo en el header */
+        .header-with-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            padding: 20px 0;
+        }
+        
+        .header-logo {
+            height: 60px;
+            width: auto;
+        }
+        
+        .header-text h1 {
+            margin: 0;
+            font-size: 28px;
+        }
+        
+        .header-text p {
+            margin: 5px 0 0 0;
+            font-size: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .header-with-logo {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .header-logo {
+                height: 50px;
+            }
+            
+            .header-text {
+                text-align: center;
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <!-- HEADER -->
+    <!-- HEADER CON LOGO -->
     <header class="header">
         <div class="container">
-            <h1>📊 Reportes de Conversaciones</h1>
-            <p>Fundación Empresas Polar - Bibliofep</p>
+            <div class="header-with-logo">
+                <img src="logo.png" 
+                     alt="Umbusk Logo" 
+                     class="header-logo">
+                <div class="header-text">
+                    <h1>📊 Reportes de Conversaciones</h1>
+                    <p>Fundación Empresas Polar - Bibliofep</p>
+                </div>
+            </div>
         </div>
     </header>
 
