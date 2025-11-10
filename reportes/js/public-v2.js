@@ -554,7 +554,7 @@ async function exportToWord() {
         ${images.countries ? `
         <div class="section">
             <h2>🌍 Distribución por País</h2>
-            <img src="${images.countries}" class="chart-img" width="370">
+            <img src="${images.countries}" class="chart-img" width="325">
         </div>
         ` : ''}
         
