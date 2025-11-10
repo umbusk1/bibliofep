@@ -455,7 +455,7 @@ async function exportToWord() {
         
         /* Tabla de estadísticas: 1 FILA x 4 COLUMNAS */
         table {
-            width: 80%;
+            width: 100%;
             border-collapse: collapse;
             margin: 1px 0 2px;
         }
@@ -469,14 +469,14 @@ async function exportToWord() {
         }
         
         .stat-value {
-            font-size: 16px;
+            font-size: 12px;
             font-weight: bold;
             color: #667eea;
             margin-bottom: 1px;
         }
         
         .stat-label {
-            font-size: 16px;
+            font-size: 10px;
             color: #666;
         }
         
@@ -515,7 +515,7 @@ async function exportToWord() {
         <!-- Título -->
         <div class="subtitle">
             <h2>Fundación Empresas Polar - Bibliofep</h2>
-            Reportes de Conversaciones:           
+            Reporte de Conversaciones:           
                  ${escapeHtml(App.currentReport.title)} 📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
             </div>
         </div>
@@ -546,7 +546,7 @@ async function exportToWord() {
         ${images.conversations ? `
         <div class="section">
             <h2>📅 Conversaciones por Día</h2>
-            <img src="${images.conversations}" class="chart-img" width="520">
+            <img src="${images.conversations}" class="chart-img" width="460">
         </div>
         ` : ''}
         
@@ -554,7 +554,7 @@ async function exportToWord() {
         ${images.countries ? `
         <div class="section">
             <h2>🌍 Distribución por País</h2>
-            <img src="${images.countries}" class="chart-img" width="400">
+            <img src="${images.countries}" class="chart-img" width="280">
         </div>
         ` : ''}
         
@@ -567,7 +567,7 @@ async function exportToWord() {
         ${images.topics ? `
         <div class="section">
             <h2>🎯 Temas Más Consultados (Top 10)</h2>
-            <img src="${images.topics}" class="chart-img" width="540">
+            <img src="${images.topics}" class="chart-img" width="460">
         </div>
         ` : ''}
         
@@ -575,7 +575,7 @@ async function exportToWord() {
         ${images.average ? `
         <div class="section">
             <h2>📈 Promedio de Mensajes por Día</h2>
-            <img src="${images.average}" class="chart-img" width="540">
+            <img src="${images.average}" class="chart-img" width="460">
         </div>
         ` : ''}
         
