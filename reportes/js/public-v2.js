@@ -377,7 +377,7 @@ function createAverageChart(data) {
 }
 
 // ============================================
-// EXPORTAR A WORD - 2 PÁGINAS CON LOGO
+// EXPORTAR A WORD - 2 PÁGINAS OPTIMIZADO
 // ============================================
 
 async function exportToWord() {
@@ -397,7 +397,7 @@ async function exportToWord() {
         const stats = App.currentReport.stats_data;
         const images = await convertChartsToImages();
         
-        // Crear HTML para Word con estructura de 2 páginas
+        // Crear HTML para Word con estructura de 2 páginas optimizada
         let html = `
 <!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office" 
@@ -417,9 +417,9 @@ async function exportToWord() {
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 30px;
+            margin: 25px;
             color: #2c3e50;
-            line-height: 1.6;
+            line-height: 1.5;
         }
         
         /* === PÁGINA 1 === */
@@ -429,73 +429,74 @@ async function exportToWord() {
         
         .logo-header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         
         .logo {
-            max-width: 150px;
-            margin-bottom: 20px;
+            max-width: 130px;
+            margin-bottom: 12px;
         }
         
         h1 {
             color: #667eea;
-            font-size: 22px;
-            margin: 10px 0;
+            font-size: 20px;
+            margin: 8px 0;
             text-align: center;
         }
         
         .subtitle {
             text-align: center;
             color: #666;
-            font-size: 14px;
-            margin: 5px 0 20px;
+            font-size: 13px;
+            margin: 5px 0 15px;
             border-bottom: 2px solid #667eea;
-            padding-bottom: 15px;
+            padding-bottom: 12px;
         }
         
+        /* Tabla de estadísticas: 1 FILA x 4 COLUMNAS */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 25px 0;
+            margin: 15px 0 20px;
         }
         
         td {
-            padding: 15px;
+            padding: 12px 8px;
             text-align: center;
             border: 1px solid #ddd;
             background: #fafafa;
-            width: 50%;
+            width: 25%;
         }
         
         .stat-value {
-            font-size: 32px;
+            font-size: 26px;
             font-weight: bold;
             color: #667eea;
             margin-bottom: 5px;
         }
         
         .stat-label {
-            font-size: 13px;
+            font-size: 11px;
             color: #666;
         }
         
         /* === SECCIONES === */
         .section {
-            margin: 30px 0;
+            margin: 20px 0;
             page-break-inside: avoid;
         }
         
         h2 {
             color: #667eea;
-            font-size: 17px;
-            margin: 25px 0 15px;
-            padding-bottom: 8px;
+            font-size: 15px;
+            margin: 18px 0 12px;
+            padding-bottom: 6px;
             border-bottom: 2px solid #e0e0e0;
         }
         
         .chart-img {
             display: block;
-            margin: 20px auto;
+            margin: 12px auto;
             max-width: 100%;
             height: auto;
         }
@@ -522,26 +523,24 @@ async function exportToWord() {
             </div>
         </div>
         
-        <!-- Estadísticas Generales -->
+        <!-- Estadísticas: 1 FILA x 4 COLUMNAS -->
         <table>
             <tr>
                 <td>
                     <div class="stat-value">${Number(stats.general.total_conversations || 0).toLocaleString()}</div>
-                    <div class="stat-label">💬 Conversaciones Totales</div>
+                    <div class="stat-label">💬 Conversaciones</div>
                 </td>
                 <td>
                     <div class="stat-value">${Number(stats.general.total_messages || 0).toLocaleString()}</div>
-                    <div class="stat-label">📨 Mensajes Totales</div>
+                    <div class="stat-label">📨 Mensajes</div>
                 </td>
-            </tr>
-            <tr>
                 <td>
                     <div class="stat-value">${Number(stats.general.avg_messages_per_conversation || 0).toFixed(1)}</div>
-                    <div class="stat-label">📊 Promedio Mensajes/Conv.</div>
+                    <div class="stat-label">📊 Promedio</div>
                 </td>
                 <td>
                     <div class="stat-value">${stats.countries.length}</div>
-                    <div class="stat-label">🌍 Países Representados</div>
+                    <div class="stat-label">🌍 Países</div>
                 </td>
             </tr>
         </table>
@@ -550,7 +549,7 @@ async function exportToWord() {
         ${images.conversations ? `
         <div class="section">
             <h2>📅 Conversaciones por Día</h2>
-            <img src="${images.conversations}" class="chart-img" width="550">
+            <img src="${images.conversations}" class="chart-img" width="520">
         </div>
         ` : ''}
         
@@ -558,7 +557,7 @@ async function exportToWord() {
         ${images.countries ? `
         <div class="section">
             <h2>🌍 Distribución por País</h2>
-            <img src="${images.countries}" class="chart-img" width="420">
+            <img src="${images.countries}" class="chart-img" width="400">
         </div>
         ` : ''}
         
@@ -571,7 +570,7 @@ async function exportToWord() {
         ${images.topics ? `
         <div class="section">
             <h2>🎯 Temas Más Consultados (Top 10)</h2>
-            <img src="${images.topics}" class="chart-img" width="550">
+            <img src="${images.topics}" class="chart-img" width="540">
         </div>
         ` : ''}
         
@@ -579,7 +578,7 @@ async function exportToWord() {
         ${images.average ? `
         <div class="section">
             <h2>📈 Promedio de Mensajes por Día</h2>
-            <img src="${images.average}" class="chart-img" width="550">
+            <img src="${images.average}" class="chart-img" width="540">
         </div>
         ` : ''}
         
@@ -601,7 +600,7 @@ async function exportToWord() {
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
         
-        console.log('✅ Documento Word generado exitosamente (2 páginas)');
+        console.log('✅ Documento Word generado exitosamente (2 páginas optimizadas)');
         
     } catch (error) {
         console.error('❌ Error generando Word:', error);
