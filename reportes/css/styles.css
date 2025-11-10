@@ -225,10 +225,11 @@ h1, h2, h3, h4, h5, h6 {
    ============================================ */
 
 .dashboard-main {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    flex-wrap: wrap;
+   flex: 1;
+   max-width: 1200px;
+   margin: 30 auto;
+   padding: 30px 20px;
+   width: 100%;
 }
 
 /* ============================================
