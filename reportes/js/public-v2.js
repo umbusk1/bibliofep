@@ -513,10 +513,9 @@ async function exportToWord() {
     <div class="page-1">
         
         <!-- Logo y Título -->
-        <div class="logo-header">
-            <img src="logo.png" class="logo" alt="Umbusk"><br>Vibe-coded by Umbusk
-            <h1>Reportes de Conversaciones</h1>
-            <h1>Fundación Empresas Polar - Bibliofep</h1>
+        <div>
+            <h3>Reportes de Conversaciones</h3>
+            <h4>Fundación Empresas Polar - Bibliofep</h4>
             <div class="subtitle">
                 ${escapeHtml(App.currentReport.title)}<br>
                 📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
@@ -583,7 +582,9 @@ async function exportToWord() {
         ` : ''}
         
     </div>
-    
+    <div class="subtitle">
+        Vibe-coded by Umbusk
+    </div>
 </body>
 </html>`;
         
