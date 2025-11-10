@@ -452,6 +452,14 @@ async function exportToWord() {
             border-bottom: 2px solid #667eea;
             padding-bottom: 12px;
         }
+
+        .coda {
+            text-align: center;
+            color: #667eea;
+            font-size: 10px;
+            margin: 5px 0 15px;
+            padding-bottom: 12px;
+        }
         
         /* Tabla de estadísticas: 1 FILA x 4 COLUMNAS */
         table {
