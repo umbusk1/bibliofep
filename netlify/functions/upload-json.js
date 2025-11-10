@@ -1,6 +1,6 @@
 // ============================================
-// FUNCIÓN: UPLOAD JSON
-// Recibe archivo JSON y lo procesa
+// FUNCIÓN: UPLOAD JSON (VERSIÓN CORREGIDA)
+// Maneja mensajes sin createdAt
 // ============================================
 
 const { Pool } = require('pg');
@@ -13,6 +13,9 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
+
+  // Variable para el pool de base de datos
+  let pool;
 
   try {
     // Parsear el JSON del body
@@ -27,7 +30,7 @@ exports.handler = async (event, context) => {
     }
 
     // Conectar a la base de datos
-    const pool = new Pool({
+    pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }
     });
@@ -55,6 +58,7 @@ exports.handler = async (event, context) => {
 
     let conversationsProcessed = 0;
     let messagesProcessed = 0;
+    let messagesSkipped = 0;
 
     // Procesar cada conversación
     for (const conv of jsonData.conversations) {
@@ -94,26 +98,35 @@ exports.handler = async (event, context) => {
       // Procesar mensajes de esta conversación
       if (conv.messages && Array.isArray(conv.messages)) {
         for (const msg of conv.messages) {
-          // Solo procesar mensajes que tengan ID (no son mensajes iniciales del asistente)
-          if (msg.id) {
-            await pool.query(`
-              INSERT INTO messages (
-                id, conversation_id, role, content, score, 
-                created_at, step_id, message_type
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-              ON CONFLICT (id) DO NOTHING
-            `, [
-              msg.id,
-              conv.id,
-              msg.role,
-              msg.content,
-              msg.score || null,
-              msg.createdAt,
-              msg.stepId || null,
-              msg.type || 'text'
-            ]);
+          // VALIDACIÓN CRÍTICA: Solo procesar mensajes con ID Y createdAt
+          if (msg.id && msg.createdAt) {
+            try {
+              await pool.query(`
+                INSERT INTO messages (
+                  id, conversation_id, role, content, score, 
+                  created_at, step_id, message_type
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (id) DO NOTHING
+              `, [
+                msg.id,
+                conv.id,
+                msg.role,
+                msg.content,
+                msg.score || null,
+                msg.createdAt,
+                msg.stepId || null,
+                msg.type || 'text'
+              ]);
 
-            messagesProcessed++;
+              messagesProcessed++;
+            } catch (msgError) {
+              // Si falla un mensaje individual, registrar pero continuar
+              console.error(`Error insertando mensaje ${msg.id}:`, msgError.message);
+              messagesSkipped++;
+            }
+          } else {
+            // Saltar mensajes sin ID o sin createdAt (ej: tool-calls)
+            messagesSkipped++;
           }
         }
       }
@@ -148,6 +161,7 @@ exports.handler = async (event, context) => {
         stats: {
           conversationsProcessed,
           messagesProcessed,
+          messagesSkipped,
           filename,
           period: `${jsonData.startDateStr} a ${jsonData.endDateStr}`
         }
@@ -156,6 +170,16 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('Error processing JSON:', error);
+    
+    // ROLLBACK en caso de error
+    if (pool) {
+      try {
+        await pool.query('ROLLBACK');
+        await pool.end();
+      } catch (rollbackError) {
+        console.error('Error en rollback:', rollbackError);
+      }
+    }
     
     return {
       statusCode: 500,
