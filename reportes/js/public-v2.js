@@ -512,13 +512,12 @@ async function exportToWord() {
     <!-- ========== PÁGINA 1 ========== -->
     <div class="page-1">
         
-        <!-- Logo y Título -->
+        <!-- Título -->
         <div>
-            <h3>Reportes de Conversaciones</h3>
-            <h4>Fundación Empresas Polar - Bibliofep</h4>
+            <h3>Fundación Empresas Polar - Bibliofep</h3>
             <div class="subtitle">
-                ${escapeHtml(App.currentReport.title)}<br>
-                📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
+            Reportes de Conversaciones:           
+                 ${escapeHtml(App.currentReport.title)} 📅 ${formatDate(App.currentReport.period_start)} - ${formatDate(App.currentReport.period_end)}
             </div>
         </div>
         
