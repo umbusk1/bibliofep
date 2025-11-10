@@ -137,7 +137,7 @@ h1, h2, h3, h4, h5, h6 {
     color: white;
     padding: 20px 0;
     box-shadow: var(--shadow-md);
-    width: auto;
+    width: 100%;
     align-items: center;
 }
 
@@ -840,36 +840,7 @@ h1, h2, h3, h4, h5, h6 {
     display: block;
 }
 
-.header-logo {
-    height: 50px;
-    width: auto;
-    margin-right: 20px;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.header-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.header-text h1 {
-    margin-bottom: 2px;
-}
-
-.header-text .subtitle {
-    margin: 0;
-}
-
 @media (max-width: 768px) {
-    .header-logo {
-        height: 35px;
-    }
-    
     .login-logo {
         width: 100px;
     }
