@@ -588,7 +588,7 @@ async function exportToWord() {
         ` : ''}
         
     </div>
-    <div class="subtitle">
+    <div class="coda">
         Vibe-coded by Umbusk
     </div>
 </body>
