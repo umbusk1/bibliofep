@@ -514,7 +514,7 @@ async function exportToWord() {
         
         <!-- Logo y Título -->
         <div class="logo-header">
-            <img src="logo.png" class="logo" alt="Umbusk">
+            <img src="logo.png" class="logo" alt="Umbusk"><br>Vibe-coded by Umbusk
             <h1>Reportes de Conversaciones</h1>
             <h1>Fundación Empresas Polar - Bibliofep</h1>
             <div class="subtitle">
