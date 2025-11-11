@@ -1,5 +1,5 @@
 // ============================================
-// FUNCIÓN: GET STATISTICS
+// FUNCIÓN: GET STATISTICS - VERSIÓN CORREGIDA
 // Obtiene estadísticas para el dashboard
 // ============================================
 
@@ -47,6 +47,8 @@ exports.handler = async (event, context) => {
     const month = params.month;
     const year = params.year;
 
+    console.log('Parámetros recibidos:', { startDate, endDate, month, year });
+
     // Conectar a la base de datos
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -55,7 +57,7 @@ exports.handler = async (event, context) => {
 
     let stats = {};
 
-    // 1. CONVERSACIONES POR DÍA
+    // 1. CONVERSACIONES POR DÍA - CORREGIDO
     let conversationsByDayQuery = `
       SELECT 
         DATE(created_at) as date,
@@ -67,7 +69,8 @@ exports.handler = async (event, context) => {
     let paramCount = 1;
 
     if (startDate && endDate) {
-      conversationsByDayQuery += ` AND created_at BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      // CORRECCIÓN: Usar DATE() para comparación exacta de fechas
+      conversationsByDayQuery += ` AND DATE(created_at) >= $${paramCount}::date AND DATE(created_at) <= $${paramCount + 1}::date`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -80,7 +83,7 @@ exports.handler = async (event, context) => {
 
     const conversationsByDay = await pool.query(conversationsByDayQuery, queryParams);
 
-    // 2. PAÍSES
+    // 2. PAÍSES - CORREGIDO
     let countriesQuery = `
       SELECT 
         country,
@@ -92,7 +95,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      countriesQuery += ` AND created_at BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      countriesQuery += ` AND DATE(created_at) >= $${paramCount}::date AND DATE(created_at) <= $${paramCount + 1}::date`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -105,7 +108,7 @@ exports.handler = async (event, context) => {
 
     const countries = await pool.query(countriesQuery, queryParams);
 
-    // 3. PROMEDIO DE MENSAJES POR DÍA
+    // 3. PROMEDIO DE MENSAJES POR DÍA - CORREGIDO
     let avgMessagesQuery = `
       SELECT 
         DATE(created_at) as date,
@@ -117,7 +120,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      avgMessagesQuery += ` AND created_at BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      avgMessagesQuery += ` AND DATE(created_at) >= $${paramCount}::date AND DATE(created_at) <= $${paramCount + 1}::date`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -130,7 +133,7 @@ exports.handler = async (event, context) => {
 
     const avgMessages = await pool.query(avgMessagesQuery, queryParams);
 
-    // 4. TEMAS MÁS CONSULTADOS (desde tabla topics)
+    // 4. TEMAS MÁS CONSULTADOS - CORREGIDO
     let topicsQuery = `
       SELECT 
         t.topic_name,
@@ -143,7 +146,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      topicsQuery += ` AND c.created_at BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      topicsQuery += ` AND DATE(c.created_at) >= $${paramCount}::date AND DATE(c.created_at) <= $${paramCount + 1}::date`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -156,7 +159,7 @@ exports.handler = async (event, context) => {
 
     const topics = await pool.query(topicsQuery, queryParams);
 
-    // 5. ESTADÍSTICAS GENERALES
+    // 5. ESTADÍSTICAS GENERALES - CORREGIDO
     let generalStatsQuery = `
       SELECT 
         COUNT(*) as total_conversations,
@@ -171,7 +174,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      generalStatsQuery += ` AND created_at BETWEEN $${paramCount} AND $${paramCount + 1}`;
+      generalStatsQuery += ` AND DATE(created_at) >= $${paramCount}::date AND DATE(created_at) <= $${paramCount + 1}::date`;
       queryParams.push(startDate, endDate);
     } else if (month && year) {
       generalStatsQuery += ` AND month = $${paramCount} AND year = $${paramCount + 1}`;
@@ -181,6 +184,12 @@ exports.handler = async (event, context) => {
     const generalStats = await pool.query(generalStatsQuery, queryParams);
 
     await pool.end();
+
+    console.log('Resultados:', {
+      conversationsByDay: conversationsByDay.rows.length,
+      countries: countries.rows.length,
+      topics: topics.rows.length
+    });
 
     // Construir respuesta
     stats = {
