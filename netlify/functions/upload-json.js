@@ -1,9 +1,11 @@
 // ============================================
-// FUNCIÓN: UPLOAD JSON (VERSIÓN CORREGIDA)
-// Maneja mensajes sin createdAt
+// FUNCIÓN: UPLOAD JSON + ANÁLISIS AUTOMÁTICO
 // ============================================
 
 const { Pool } = require('pg');
+
+// Importar la función de análisis
+const analyzeTopicsHandler = require('./analyze-topics').handler;
 
 exports.handler = async (event, context) => {
   // Solo permitir POST
@@ -14,14 +16,11 @@ exports.handler = async (event, context) => {
     };
   }
 
-  // Variable para el pool de base de datos
   let pool;
 
   try {
-    // Parsear el JSON del body
     const jsonData = JSON.parse(event.body);
     
-    // Validar que tenga la estructura correcta
     if (!jsonData.conversations || !Array.isArray(jsonData.conversations)) {
       return {
         statusCode: 400,
@@ -29,7 +28,6 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Conectar a la base de datos
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }
@@ -53,28 +51,28 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Comenzar transacción
     await pool.query('BEGIN');
 
     let conversationsProcessed = 0;
     let messagesProcessed = 0;
     let messagesSkipped = 0;
+    const newConversationIds = []; // Guardar IDs de conversaciones nuevas
 
     // Procesar cada conversación
     for (const conv of jsonData.conversations) {
-      // Extraer mes y año de created_at
       const createdAt = new Date(conv.created_at);
       const month = createdAt.getMonth() + 1;
       const year = createdAt.getFullYear();
 
-      // Insertar conversación
-      await pool.query(`
+      // Insertar conversación y capturar si fue insertada
+      const insertResult = await pool.query(`
         INSERT INTO conversations (
           id, chatbot_id, chatbot_name, country, created_at, 
           title, message_count, min_score, source, user_id_chat, 
           anonymous_id, month, year, sentiment, last_message_at
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (id) DO NOTHING
+        RETURNING id
       `, [
         conv.id,
         conv.chatbot_id,
@@ -93,12 +91,16 @@ exports.handler = async (event, context) => {
         conv.last_message_at
       ]);
 
+      // Si fue insertada (nueva), guardar su ID
+      if (insertResult.rows.length > 0) {
+        newConversationIds.push(conv.id);
+      }
+
       conversationsProcessed++;
 
-      // Procesar mensajes de esta conversación
+      // Procesar mensajes
       if (conv.messages && Array.isArray(conv.messages)) {
         for (const msg of conv.messages) {
-          // VALIDACIÓN CRÍTICA: Solo procesar mensajes con ID Y createdAt
           if (msg.id && msg.createdAt) {
             try {
               await pool.query(`
@@ -120,12 +122,10 @@ exports.handler = async (event, context) => {
 
               messagesProcessed++;
             } catch (msgError) {
-              // Si falla un mensaje individual, registrar pero continuar
               console.error(`Error insertando mensaje ${msg.id}:`, msgError.message);
               messagesSkipped++;
             }
           } else {
-            // Saltar mensajes sin ID o sin createdAt (ej: tool-calls)
             messagesSkipped++;
           }
         }
@@ -144,9 +144,36 @@ exports.handler = async (event, context) => {
       conversationsProcessed
     ]);
 
-    // Commit transacción
     await pool.query('COMMIT');
     await pool.end();
+
+    console.log(`✓ JSON procesado: ${conversationsProcessed} conversaciones, ${newConversationIds.length} nuevas`);
+
+    // 🚀 ANÁLISIS AUTOMÁTICO DE CONVERSACIONES NUEVAS
+    let analysisResult = null;
+    if (newConversationIds.length > 0) {
+      console.log(`🤖 Iniciando análisis automático de ${newConversationIds.length} conversaciones nuevas...`);
+      
+      try {
+        // Llamar a la función de análisis
+        const analysisEvent = {
+          httpMethod: 'POST',
+          headers: event.headers, // Pasar autenticación
+          body: JSON.stringify({
+            conversationIds: newConversationIds,
+            autoMode: true // Indicar que es modo automático
+          })
+        };
+
+        const analysisResponse = await analyzeTopicsHandler(analysisEvent, context);
+        analysisResult = JSON.parse(analysisResponse.body);
+        
+        console.log(`✓ Análisis completado: ${analysisResult.topicsSaved} temas guardados`);
+      } catch (analysisError) {
+        console.error('⚠ Error en análisis automático:', analysisError.message);
+        // No fallar el upload por esto
+      }
+    }
 
     // Respuesta exitosa
     return {
@@ -160,18 +187,22 @@ exports.handler = async (event, context) => {
         message: 'JSON procesado exitosamente',
         stats: {
           conversationsProcessed,
+          conversationsNew: newConversationIds.length,
           messagesProcessed,
           messagesSkipped,
           filename,
           period: `${jsonData.startDateStr} a ${jsonData.endDateStr}`
-        }
+        },
+        analysis: analysisResult ? {
+          topicsAnalyzed: analysisResult.topicsSaved || 0,
+          conversationsAnalyzed: analysisResult.conversationsAnalyzed || 0
+        } : null
       })
     };
 
   } catch (error) {
     console.error('Error processing JSON:', error);
     
-    // ROLLBACK en caso de error
     if (pool) {
       try {
         await pool.query('ROLLBACK');
