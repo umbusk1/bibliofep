@@ -710,3 +710,9 @@ function showStatus(elementId, message, type) {
         }, 5000);
     }
 }
+
+// Función global para abrir reportes públicos
+window.openPublicReports = function() {
+    const publicUrl = window.location.origin + '/reportes/public-v2.html';
+    window.open(publicUrl, '_blank');
+}
