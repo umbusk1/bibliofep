@@ -363,6 +363,9 @@ function loadInitialData() {
     };
 
     loadStats();
+
+    // Cargar reportes publicados si es admin
+    loadPublishedReports();
 }
 
 async function loadStats() {
