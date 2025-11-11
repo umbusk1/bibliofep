@@ -170,7 +170,7 @@
             🔄 Re-analizar Temas Faltantes con AI
         </button>
         
-        <!-- Botón 3: Publicar con Input (1/2) - Funciona directo -->
+        <!-- Botón 3: Publicar con Input (1/2) - e ir al frontend -->
         <div class="publish-action-container">
             <input type="text" 
                    id="reportTitleInput" 
@@ -178,8 +178,13 @@
             <button onclick="publishReport()">
                 🌐 Publicar
             </button>
-        </div>
-        
+
+            <button onclick="openPublicReports()" 
+            class="action-btn btn-gradient-green" 
+            style="flex: 0 0 auto; padding: 12px 24px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 14px;">
+                👁️ Ver Reportes Públicos
+            </button>
+        </div>            
     </div>
 </div>
 
