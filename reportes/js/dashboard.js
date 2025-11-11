@@ -719,3 +719,129 @@ window.openPublicReports = function() {
     const publicUrl = window.location.origin + '/reportes/public-v2.html';
     window.open(publicUrl, '_blank');
 }
+
+// ============================================
+// GESTIÓN DE REPORTES PUBLICADOS
+// ============================================
+
+async function loadPublishedReports() {
+    const userRole = localStorage.getItem('userRole');
+    const section = document.getElementById('manageReportsSection');
+    
+    // Solo mostrar para admin
+    if (userRole !== 'admin') {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    
+    try {
+        const response = await fetch('/.netlify/functions/get-public-reports');
+        
+        if (!response.ok) throw new Error('Error cargando reportes');
+        
+        const data = await response.json();
+        renderPublishedReports(data.all || []);
+        
+    } catch (error) {
+        console.error('Error cargando reportes publicados:', error);
+        document.getElementById('publishedReportsList').innerHTML = 
+            '<p style="color: #c33;">Error al cargar reportes</p>';
+    }
+}
+
+function renderPublishedReports(reports) {
+    const container = document.getElementById('publishedReportsList');
+    
+    if (reports.length === 0) {
+        container.innerHTML = '<p style="color: #666; font-style: italic;">No hay reportes publicados</p>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #f7fafc; border-bottom: 2px solid #e2e8f0;">
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Título</th>
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Período</th>
+                    <th style="padding: 12px; text-align: left; font-weight: 600;">Publicado</th>
+                    <th style="padding: 12px; text-align: center; font-weight: 600;">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reports.map(report => `
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding: 12px;">${escapeHtml(report.title)}</td>
+                        <td style="padding: 12px; font-size: 13px; color: #666;">
+                            ${formatDateShort(report.period_start)} - ${formatDateShort(report.period_end)}
+                        </td>
+                        <td style="padding: 12px; font-size: 13px; color: #666;">
+                            ${formatDateShort(report.published_at)}
+                        </td>
+                        <td style="padding: 12px; text-align: center;">
+                            <button onclick="deleteReport(${report.id}, '${escapeHtml(report.title)}')" 
+                                    class="btn-secondary" 
+                                    style="padding: 6px 12px; font-size: 13px; background: #fed7d7; color: #c53030; border: 1px solid #fc8181;">
+                                🗑️ Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+async function deleteReport(reportId, reportTitle) {
+    const confirmMsg = `¿Eliminar este reporte?\n\n"${reportTitle}"\n\nEsta acción no se puede deshacer.`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    const loadingOverlay = showLoadingOverlay('Eliminando reporte...');
+    
+    try {
+        const response = await fetch(`/.netlify/functions/delete-report?id=${reportId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        const result = await response.json();
+        
+        hideLoadingOverlay(loadingOverlay);
+        
+        if (response.ok) {
+            alert(`✅ Reporte eliminado exitosamente:\n\n"${result.reportTitle}"`);
+            
+            // Recargar lista
+            loadPublishedReports();
+        } else {
+            alert(`❌ Error: ${result.error}`);
+        }
+        
+    } catch (error) {
+        hideLoadingOverlay(loadingOverlay);
+        console.error('Error eliminando reporte:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+function formatDateShort(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-VE', { 
+        day: '2-digit', 
+        month: 'short', 
+        year: 'numeric'
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
