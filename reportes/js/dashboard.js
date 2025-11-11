@@ -364,8 +364,20 @@ function applyFilters() {
         currentFilters.month = document.getElementById('monthSelect').value;
         currentFilters.year = document.getElementById('yearSelectMonth').value;
     } else if (filterType === 'range') {
-        currentFilters.startDate = document.getElementById('startDate').value;
-        currentFilters.endDate = document.getElementById('endDate').value;
+        // Obtener fechas del input (formato YYYY-MM-DD del input[type="date"])
+        const startDateInput = document.getElementById('startDate').value;
+        const endDateInput = document.getElementById('endDate').value;
+        
+        if (!startDateInput || !endDateInput) {
+            alert('Por favor selecciona ambas fechas');
+            return;
+        }
+        
+        // Convertir a formato ISO para la API (YYYY-MM-DD)
+        currentFilters.startDate = startDateInput;
+        currentFilters.endDate = endDateInput;
+        
+        console.log('Filtros aplicados:', currentFilters);
     }
 
     loadStats();
