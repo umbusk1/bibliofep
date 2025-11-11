@@ -650,34 +650,56 @@ async function convertChartsToImages() {
 // UTILIDADES
 // ============================================
 
+// ============================================
+// UTILIDADES - CORREGIDAS
+// ============================================
+
 function formatDate(dateStr) {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-VE', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric' 
-    });
+    
+    // Extraer fecha sin conversión de zona horaria
+    const datePart = dateStr.split('T')[0]; // "2025-10-12"
+    const [year, month, day] = datePart.split('-');
+    
+    const monthNames = [
+        'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    ];
+    
+    return `${day} ${monthNames[parseInt(month) - 1]}. ${year}`;
 }
 
 function formatDateTime(dateStr) {
     if (!dateStr) return '';
+    
+    // Extraer fecha sin conversión de zona horaria
+    const datePart = dateStr.split('T')[0]; // "2025-10-12"
+    const [year, month, day] = datePart.split('-');
+    
+    const monthNames = [
+        'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    ];
+    
+    // Para la hora, sí podemos usar Date ya que es un timestamp completo
     const d = new Date(dateStr);
-    return d.toLocaleDateString('es-VE', { 
-        day: '2-digit', 
-        month: 'short', 
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    const hours = d.getHours().toString().padStart(2, '0');
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    
+    return `${day} ${monthNames[parseInt(month) - 1]}. ${year}, ${hours}:${minutes}`;
 }
 
 function formatShortDate(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-VE', { 
-        day: '2-digit', 
-        month: 'short' 
-    });
+    // Extraer fecha sin conversión de zona horaria
+    const datePart = dateStr.split('T')[0]; // "2025-10-12"
+    const [year, month, day] = datePart.split('-');
+    
+    const monthNames = [
+        'ene', 'feb', 'mar', 'abr', 'may', 'jun',
+        'jul', 'ago', 'sep', 'oct', 'nov', 'dic'
+    ];
+    
+    return `${day} ${monthNames[parseInt(month) - 1]}`;
 }
 
 function sanitizeFilename(name) {
