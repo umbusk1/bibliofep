@@ -473,15 +473,18 @@ function updateCharts(stats) {
 }
 
 // ============================================
-// GRÁFICO: CONVERSACIONES POR DÍA
+// GRÁFICO: CONVERSACIONES POR DÍA - CORREGIDO
 // ============================================
 
 function createConversationsByDayChart(data) {
     const ctx = document.getElementById('conversationsByDayChart');
     
+    // CORRECCIÓN: Extraer fecha sin conversión de zona horaria
     const labels = data.map(item => {
-        const date = new Date(item.date);
-        return date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' });
+        const dateStr = item.date.split('T')[0]; // "2025-11-01"
+        const [year, month, day] = dateStr.split('-');
+        const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        return `${day} ${monthNames[parseInt(month) - 1]}`;
     });
     
     const values = data.map(item => parseInt(item.count));
@@ -641,15 +644,18 @@ function createTopicsChart(data) {
 }
 
 // ============================================
-// GRÁFICO: PROMEDIO DE MENSAJES POR DÍA
+// GRÁFICO: PROMEDIO DE MENSAJES POR DÍA - CORREGIDO
 // ============================================
 
 function createAvgMessagesChart(data) {
     const ctx = document.getElementById('avgMessagesChart');
     
+    // CORRECCIÓN: Extraer fecha sin conversión de zona horaria
     const labels = data.map(item => {
-        const date = new Date(item.date);
-        return date.toLocaleDateString('es-VE', { day: '2-digit', month: 'short' });
+        const dateStr = item.date.split('T')[0]; // "2025-11-01"
+        const [year, month, day] = dateStr.split('-');
+        const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+        return `${day} ${monthNames[parseInt(month) - 1]}`;
     });
     
     const values = data.map(item => parseFloat(item.avg_messages).toFixed(1));
