@@ -245,97 +245,48 @@ if (response.ok) {
 // ANÁLISIS DE TEMAS CON CLAUDE - SIMPLIFICADO
 // ============================================
 
-// Función global para el botón superior - Análisis directo
-window.showAnalysisSection = async function() {
-    // No mostrar sección, ejecutar directamente
-    await analyzeCurrentTopics();
-}
-
-async function analyzeCurrentTopics() {
-    // Crear overlay de carga
-    const loadingOverlay = showLoadingOverlay('🤖 Analizando temas con Claude AI...');
+// Función global para re-analizar conversaciones sin temas
+window.analyzeRemainingTopics = async function() {
+    const loadingOverlay = showLoadingOverlay('🔍 Verificando conversaciones sin temas...');
 
     try {
-        // Obtener IDs de conversaciones actuales según filtros
-        const conversationIds = await getCurrentConversationIds();
-
-        if (conversationIds.length === 0) {
-            hideLoadingOverlay(loadingOverlay);
-            alert('ℹ️ No hay conversaciones en el período seleccionado para analizar');
-            return;
-        }
-
-        // Mostrar confirmación
-        const confirmMsg = `¿Analizar ${conversationIds.length} conversaciones del período seleccionado?\n\nEsto puede tomar varios minutos.`;
-        
-        hideLoadingOverlay(loadingOverlay);
-        
-        if (!confirm(confirmMsg)) {
-            return;
-        }
-
-        // Reabrir loading
-        const loadingOverlay2 = showLoadingOverlay(`Analizando ${conversationIds.length} conversaciones...`);
-
-        // Llamar a la función de análisis
+        // Llamar a la función de análisis (analizará solo las que no tienen temas)
         const response = await fetch('/api/analyze-topics', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             },
-            body: JSON.stringify({ conversationIds })
+            body: JSON.stringify({})  // Sin IDs específicos = analiza todas las que no tienen temas
         });
 
         const result = await response.json();
 
-        if (response.ok) {
-            hideLoadingOverlay(loadingOverlay2);
-            alert(
-                `✅ Análisis completado!\n\n` +
-                `📊 Temas identificados: ${result.topicsAnalyzed}\n` +
-                `💾 Guardados en BD: ${result.topicsSaved}`
-            );
+        hideLoadingOverlay(loadingOverlay);
 
-            // Recargar gráficos
-            setTimeout(() => {
-                applyFilters();
-            }, 1000);
+        if (response.ok) {
+            if (result.conversationsAnalyzed === 0) {
+                alert('✅ Todas las conversaciones ya tienen temas analizados.\n\nNo hay nada que procesar.');
+            } else {
+                alert(
+                    `✅ Re-análisis completado!\n\n` +
+                    `📊 Conversaciones analizadas: ${result.conversationsAnalyzed}\n` +
+                    `🎯 Temas guardados: ${result.topicsSaved}`
+                );
+
+                // Recargar gráficos
+                setTimeout(() => {
+                    loadStats();
+                }, 1000);
+            }
         } else {
-            hideLoadingOverlay(loadingOverlay2);
             alert(`❌ Error: ${result.error}`);
         }
 
     } catch (error) {
-        console.error('Error analizando temas:', error);
+        hideLoadingOverlay(loadingOverlay);
+        console.error('Error en re-análisis:', error);
         alert(`❌ Error: ${error.message}`);
-    }
-}
-
-// Obtener IDs de conversaciones del período actual
-async function getCurrentConversationIds() {
-    try {
-        // Construir URL con los filtros actuales
-        let url = '/api/get-conversation-ids?';
-        const params = new URLSearchParams(currentFilters);
-        url += params.toString();
-
-        const response = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${authToken}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Error obteniendo IDs de conversaciones');
-        }
-
-        const data = await response.json();
-        return data.conversationIds || [];
-
-    } catch (error) {
-        console.error('Error obteniendo IDs:', error);
-        return [];
     }
 }
 
