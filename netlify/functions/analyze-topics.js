@@ -1,12 +1,10 @@
 // ============================================
-// FUNCIÓN: ANALYZE TOPICS - VERSIÓN CORREGIDA
-// Analiza conversaciones individualmente
+// FUNCIÓN: ANALYZE TOPICS - MEJORADA
 // ============================================
 
 const { Pool } = require('pg');
 const jwt = require('jsonwebtoken');
 
-// Helper para verificar autenticación
 const verifyAuth = (authHeader) => {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     throw new Error('No autorizado');
@@ -38,33 +36,41 @@ exports.handler = async (event, context) => {
   console.log('=== INICIO ANÁLISIS DE TEMAS ===');
 
   try {
-    // Verificar autenticación
     const authHeader = event.headers.authorization || event.headers.Authorization;
     verifyAuth(authHeader);
-    console.log('✓ Autenticación verificada');
 
-    // Verificar API Key de Anthropic
     if (!process.env.ANTHROPIC_API_KEY) {
       throw new Error('ANTHROPIC_API_KEY no está configurada');
     }
-    console.log('✓ API Key de Anthropic encontrada');
 
-    // Conectar a la base de datos
+    // Parsear body
+    const body = JSON.parse(event.body || '{}');
+    const specificIds = body.conversationIds; // IDs específicos (modo automático)
+    const isAutoMode = body.autoMode === true;
+
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }
     });
-    console.log('✓ Conectado a base de datos');
 
-    // Obtener conversaciones SIN temas analizados
-    const conversationsResult = await pool.query(`
+    // Query: conversaciones sin temas
+    let query = `
       SELECT c.id, c.title, c.created_at
       FROM conversations c
       LEFT JOIN topics t ON c.id = t.conversation_id
       WHERE t.conversation_id IS NULL
-      ORDER BY c.created_at DESC
-      LIMIT 20
-    `);
+    `;
+    let queryParams = [];
+
+    // Si hay IDs específicos, filtrar por ellos
+    if (specificIds && specificIds.length > 0) {
+      query += ` AND c.id = ANY($1)`;
+      queryParams.push(specificIds);
+    }
+
+    query += ` ORDER BY c.created_at DESC LIMIT 50`; // Máximo 50 por llamada
+
+    const conversationsResult = await pool.query(query, queryParams);
 
     console.log(`✓ Encontradas ${conversationsResult.rows.length} conversaciones sin analizar`);
 
@@ -77,23 +83,23 @@ exports.handler = async (event, context) => {
           success: true,
           message: 'No hay conversaciones nuevas para analizar',
           conversationsAnalyzed: 0,
-          topicsAnalyzed: 0
+          topicsSaved: 0
         })
       };
     }
 
     let totalTopicsSaved = 0;
     let conversationsAnalyzed = 0;
-    const BATCH_SIZE = 3; // Analizar de 5 en 5
+    const BATCH_SIZE = 5; // Lotes de 5
 
     // Procesar en lotes
     for (let i = 0; i < conversationsResult.rows.length; i += BATCH_SIZE) {
       const batch = conversationsResult.rows.slice(i, i + BATCH_SIZE);
       const batchIds = batch.map(c => c.id);
       
-      console.log(`\n--- Procesando lote ${Math.floor(i/BATCH_SIZE) + 1} (${batch.length} conversaciones) ---`);
+      console.log(`--- Lote ${Math.floor(i/BATCH_SIZE) + 1}: ${batch.length} conversaciones ---`);
 
-      // Obtener mensajes de este lote
+      // Obtener mensajes
       const messagesResult = await pool.query(`
         SELECT 
           m.conversation_id,
@@ -109,7 +115,7 @@ exports.handler = async (event, context) => {
       `, [batchIds]);
 
       if (messagesResult.rows.length === 0) {
-        console.log('⚠ Sin mensajes en este lote, saltando...');
+        console.log('⚠ Sin mensajes, saltando');
         continue;
       }
 
@@ -125,16 +131,14 @@ exports.handler = async (event, context) => {
         conversationTexts[msg.conversation_id].messages.push(msg.content);
       });
 
-      // Preparar texto para análisis - FORMATO MEJORADO
+      // Preparar texto
       const conversationsList = Object.entries(conversationTexts)
         .map(([id, data], index) => {
           const messagesText = data.messages.slice(0, 5).join(' ');
           return `CONV${index + 1}: ${messagesText.substring(0, 300)}`;
         }).join('\n\n');
 
-      console.log(`Texto preparado (${conversationsList.length} caracteres)`);
-
-      // PROMPT OPTIMIZADO
+      // PROMPT
       const prompt = `Analiza estas ${batch.length} conversaciones sobre Historia de Venezuela y asigna 1-3 TEMAS ESPECÍFICOS a cada conversación.
 
 ${conversationsList}
@@ -157,8 +161,6 @@ RESPONDE JSON (sin markdown):
   ]
 }`;
 
-      console.log('Llamando a Claude API...');
-
       // Llamar a Claude
       const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
@@ -168,7 +170,7 @@ RESPONDE JSON (sin markdown):
           'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
+          model: 'claude-sonnet-4-20250514',
           max_tokens: 2000,
           temperature: 0.3,
           messages: [{
@@ -179,16 +181,14 @@ RESPONDE JSON (sin markdown):
       });
 
       if (!claudeResponse.ok) {
-        const errorText = await claudeResponse.text();
-        console.error('❌ Error de Claude API:', errorText);
-        continue; // Saltar este lote y continuar
+        console.error('❌ Error de Claude API');
+        continue;
       }
 
       const claudeData = await claudeResponse.json();
       const analysisText = claudeData.content[0].text;
-      console.log('Respuesta recibida');
 
-      // Extraer y parsear JSON
+      // Parsear JSON
       let analysis;
       try {
         const cleanText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -196,21 +196,21 @@ RESPONDE JSON (sin markdown):
       } catch (e) {
         const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-          console.error('⚠ No se pudo parsear JSON, saltando lote');
+          console.error('⚠ No se pudo parsear JSON');
           continue;
         }
         analysis = JSON.parse(jsonMatch[0]);
       }
 
       if (!analysis.conversations || !Array.isArray(analysis.conversations)) {
-        console.error('⚠ Formato inválido, saltando lote');
+        console.error('⚠ Formato inválido');
         continue;
       }
 
       // Mapear CONV1, CONV2... a IDs reales
       const convMapping = Object.keys(conversationTexts);
 
-      // Guardar temas por conversación
+      // Guardar temas
       for (const convResult of analysis.conversations) {
         const convIndex = parseInt(convResult.conv_id.replace('CONV', '')) - 1;
         const realConvId = convMapping[convIndex];
@@ -235,15 +235,15 @@ RESPONDE JSON (sin markdown):
       }
 
       conversationsAnalyzed += batch.length;
-      console.log(`✓ Lote procesado: ${totalTopicsSaved} temas guardados hasta ahora`);
+      console.log(`✓ Lote procesado: ${totalTopicsSaved} temas totales`);
 
-      // Pequeña pausa para no saturar la API
+      // Pausa para no saturar API
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     await pool.end();
 
-    console.log('=== FIN ANÁLISIS EXITOSO ===');
+    console.log('=== FIN ANÁLISIS ===');
     console.log(`Total: ${conversationsAnalyzed} conversaciones, ${totalTopicsSaved} temas`);
 
     return {
@@ -252,13 +252,13 @@ RESPONDE JSON (sin markdown):
       body: JSON.stringify({
         success: true,
         conversationsAnalyzed,
-        topicsAnalyzed: Math.floor(totalTopicsSaved / Math.max(conversationsAnalyzed, 1)),
-        topicsSaved: totalTopicsSaved
+        topicsSaved: totalTopicsSaved,
+        message: `Análisis completado: ${conversationsAnalyzed} conversaciones analizadas, ${totalTopicsSaved} temas guardados`
       })
     };
 
   } catch (error) {
-    console.error('❌ ERROR EN ANÁLISIS:', error);
+    console.error('❌ ERROR:', error);
     
     return {
       statusCode: error.message === 'No autorizado' ? 401 : 500,
@@ -271,16 +271,12 @@ RESPONDE JSON (sin markdown):
   }
 };
 
-// ============================================
-// LIMPIAR NOMBRES DE TEMAS
-// ============================================
-
+// Función de limpieza de temas
 function cleanTopic(topicName) {
   if (!topicName) return '';
   
   let cleaned = topicName.trim();
   
-  // Eliminar redundancias
   const redundancies = [
     / de Venezuela$/i,
     / venezolano$/i,
@@ -298,10 +294,7 @@ function cleanTopic(topicName) {
     cleaned = cleaned.replace(pattern, '');
   });
   
-  // Capitalizar primera letra
   cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
-  
-  // Limpiar espacios múltiples
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
   
   return cleaned;
