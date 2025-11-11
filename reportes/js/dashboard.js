@@ -208,18 +208,25 @@ async function uploadJSON(file) {
 
         const result = await response.json();
 
-        if (response.ok) {
-            alert(
-                `✅ Archivo procesado exitosamente!\n\n` +
-                `📊 Conversaciones: ${result.stats.conversationsProcessed}\n` +
-                `💬 Mensajes: ${result.stats.messagesProcessed}`
-            );
+if (response.ok) {
+    let message = `✅ Archivo procesado exitosamente!\n\n` +
+        `📊 Conversaciones: ${result.stats.conversationsProcessed}\n` +
+        `💬 Mensajes: ${result.stats.messagesProcessed}`;
+    
+    // Si hubo análisis automático, agregar información
+    if (result.analysis && result.analysis.topicsSaved > 0) {
+        message += `\n\n🤖 Análisis automático completado:\n` +
+            `✓ ${result.analysis.topicsSaved} temas identificados\n` +
+            `✓ ${result.analysis.conversationsAnalyzed} conversaciones analizadas`;
+    }
+    
+    alert(message);
 
-            // Recargar datos
-            setTimeout(() => {
-                loadInitialData();
-            }, 1000);
-        } else {
+    // Recargar datos
+    setTimeout(() => {
+        loadInitialData();
+    }, 1000);
+} else {
             alert(`❌ Error: ${result.error}`);
         }
 
