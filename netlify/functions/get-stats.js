@@ -1,5 +1,5 @@
 // ============================================
-// FUNCIÓN: GET STATISTICS - CON ZONA HORARIA
+// FUNCIÓN: GET STATISTICS - SOLUCIÓN DEFINITIVA
 // ============================================
 
 const { Pool } = require('pg');
@@ -38,10 +38,19 @@ exports.handler = async (event, context) => {
     verifyAuth(authHeader);
 
     const params = event.queryStringParameters || {};
-    const startDate = params.startDate;
-    const endDate = params.endDate;
+    let startDate = params.startDate;
+    let endDate = params.endDate;
     const month = params.month;
     const year = params.year;
+
+    console.log('Parámetros recibidos:', { startDate, endDate, month, year });
+
+    // SOLUCIÓN: Agregar tiempo explícito para incluir todo el día
+    if (startDate && endDate) {
+      startDate = startDate + ' 00:00:00';
+      endDate = endDate + ' 23:59:59';
+      console.log('Fechas ajustadas:', { startDate, endDate });
+    }
 
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
@@ -53,7 +62,7 @@ exports.handler = async (event, context) => {
     // 1. CONVERSACIONES POR DÍA
     let conversationsByDayQuery = `
       SELECT 
-        DATE(created_at AT TIME ZONE 'America/Caracas') as date,
+        DATE(created_at) as date,
         COUNT(*) as count
       FROM conversations
       WHERE 1=1
@@ -62,8 +71,7 @@ exports.handler = async (event, context) => {
     let paramCount = 1;
 
     if (startDate && endDate) {
-      conversationsByDayQuery += ` AND (created_at AT TIME ZONE 'America/Caracas')::date >= $${paramCount}::date 
-        AND (created_at AT TIME ZONE 'America/Caracas')::date <= $${paramCount + 1}::date`;
+      conversationsByDayQuery += ` AND created_at >= $${paramCount}::timestamp AND created_at <= $${paramCount + 1}::timestamp`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -72,7 +80,7 @@ exports.handler = async (event, context) => {
       paramCount += 2;
     }
 
-    conversationsByDayQuery += ` GROUP BY DATE(created_at AT TIME ZONE 'America/Caracas') ORDER BY date`;
+    conversationsByDayQuery += ` GROUP BY DATE(created_at) ORDER BY date`;
 
     const conversationsByDay = await pool.query(conversationsByDayQuery, queryParams);
 
@@ -88,8 +96,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      countriesQuery += ` AND (created_at AT TIME ZONE 'America/Caracas')::date >= $${paramCount}::date 
-        AND (created_at AT TIME ZONE 'America/Caracas')::date <= $${paramCount + 1}::date`;
+      countriesQuery += ` AND created_at >= $${paramCount}::timestamp AND created_at <= $${paramCount + 1}::timestamp`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -105,7 +112,7 @@ exports.handler = async (event, context) => {
     // 3. PROMEDIO DE MENSAJES POR DÍA
     let avgMessagesQuery = `
       SELECT 
-        DATE(created_at AT TIME ZONE 'America/Caracas') as date,
+        DATE(created_at) as date,
         AVG(message_count) as avg_messages
       FROM conversations
       WHERE 1=1
@@ -114,8 +121,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      avgMessagesQuery += ` AND (created_at AT TIME ZONE 'America/Caracas')::date >= $${paramCount}::date 
-        AND (created_at AT TIME ZONE 'America/Caracas')::date <= $${paramCount + 1}::date`;
+      avgMessagesQuery += ` AND created_at >= $${paramCount}::timestamp AND created_at <= $${paramCount + 1}::timestamp`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -124,7 +130,7 @@ exports.handler = async (event, context) => {
       paramCount += 2;
     }
 
-    avgMessagesQuery += ` GROUP BY DATE(created_at AT TIME ZONE 'America/Caracas') ORDER BY date`;
+    avgMessagesQuery += ` GROUP BY DATE(created_at) ORDER BY date`;
 
     const avgMessages = await pool.query(avgMessagesQuery, queryParams);
 
@@ -141,8 +147,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      topicsQuery += ` AND (c.created_at AT TIME ZONE 'America/Caracas')::date >= $${paramCount}::date 
-        AND (c.created_at AT TIME ZONE 'America/Caracas')::date <= $${paramCount + 1}::date`;
+      topicsQuery += ` AND c.created_at >= $${paramCount}::timestamp AND c.created_at <= $${paramCount + 1}::timestamp`;
       queryParams.push(startDate, endDate);
       paramCount += 2;
     } else if (month && year) {
@@ -170,8 +175,7 @@ exports.handler = async (event, context) => {
     paramCount = 1;
 
     if (startDate && endDate) {
-      generalStatsQuery += ` AND (created_at AT TIME ZONE 'America/Caracas')::date >= $${paramCount}::date 
-        AND (created_at AT TIME ZONE 'America/Caracas')::date <= $${paramCount + 1}::date`;
+      generalStatsQuery += ` AND created_at >= $${paramCount}::timestamp AND created_at <= $${paramCount + 1}::timestamp`;
       queryParams.push(startDate, endDate);
     } else if (month && year) {
       generalStatsQuery += ` AND month = $${paramCount} AND year = $${paramCount + 1}`;
@@ -181,6 +185,12 @@ exports.handler = async (event, context) => {
     const generalStats = await pool.query(generalStatsQuery, queryParams);
 
     await pool.end();
+
+    console.log('Resultados obtenidos:', {
+      conversationsByDay: conversationsByDay.rows.length,
+      firstDate: conversationsByDay.rows[0]?.date,
+      lastDate: conversationsByDay.rows[conversationsByDay.rows.length - 1]?.date
+    });
 
     stats = {
       conversationsByDay: conversationsByDay.rows,
