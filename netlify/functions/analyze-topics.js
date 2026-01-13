@@ -170,11 +170,12 @@ RESPONDE SOLO CON JSON VÁLIDO (sin markdown ni comentarios):
         })
       });
 
-      if (!claudeResponse.ok) {
-        console.error('❌ Error de Claude API');
-        continue;
-      }
-
+if (!claudeResponse.ok) {
+  const errorText = await claudeResponse.text();
+  console.error('❌ Error de Claude API:', claudeResponse.status, claudeResponse.statusText);
+  console.error('   Detalles:', errorText);
+  continue;
+}
       const claudeData = await claudeResponse.json();
       const analysisText = claudeData.content[0].text;
 
