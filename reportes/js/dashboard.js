@@ -56,7 +56,7 @@ async function verifyAuth() {
 function loadUserInfo() {
     const email = localStorage.getItem('userEmail');
     const role = localStorage.getItem('userRole');
-    
+
     document.getElementById('userEmail').textContent = email;
     document.getElementById('userRole').textContent = role === 'admin' ? 'Administrador' : 'Visualizador';
 }
@@ -105,7 +105,7 @@ window.showAnalysisSection = function() {
 // Función global para publicar reporte desde la barra superior
 window.publishReport = async function() {
     const title = document.getElementById('reportTitleInput').value.trim();
-    
+
     if (!title) {
         alert('⚠️ Por favor escribe un título para el reporte');
         return;
@@ -152,7 +152,7 @@ window.publishReport = async function() {
 
         if (publishResponse.ok) {
             alert(`✅ Reporte publicado exitosamente!\n\nVisualizar en: ${window.location.origin}/reportes/public.html`);
-            
+
             // Limpiar título
             document.getElementById('reportTitleInput').value = '';
         } else {
@@ -212,14 +212,14 @@ if (response.ok) {
     let message = `✅ Archivo procesado exitosamente!\n\n` +
         `📊 Conversaciones: ${result.stats.conversationsProcessed}\n` +
         `💬 Mensajes: ${result.stats.messagesProcessed}`;
-    
+
     // Si hubo análisis automático, agregar información
     if (result.analysis && result.analysis.topicsSaved > 0) {
         message += `\n\n🤖 Análisis automático completado:\n` +
             `✓ ${result.analysis.topicsSaved} temas identificados\n` +
             `✓ ${result.analysis.conversationsAnalyzed} conversaciones analizadas`;
     }
-    
+
     alert(message);
 
     // Recargar datos
@@ -235,58 +235,111 @@ if (response.ok) {
         alert(`❌ Error al procesar: ${error.message}`);
     } finally {
         hideLoadingOverlay(loadingOverlay);
-        
+
         // Limpiar input
         document.getElementById('jsonFileInput').value = '';
     }
 }
 
 // ============================================
-// ANÁLISIS DE TEMAS CON CLAUDE - SIMPLIFICADO
+// RE-ANALIZAR TEMAS - VERSIÓN ITERATIVA
 // ============================================
 
-// Función global para re-analizar conversaciones sin temas
 window.analyzeRemainingTopics = async function() {
-    const loadingOverlay = showLoadingOverlay('🔍 Verificando conversaciones sin temas...');
+    const confirmMsg = '¿Iniciar análisis automático de todas las conversaciones sin temas?\n\nEsto puede tomar varios minutos.';
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    let totalConversations = 0;
+    let totalTopics = 0;
+    let iteration = 0;
+    let hasMore = true;
+
+    const loadingOverlay = showLoadingOverlay('🤖 Analizando conversaciones...\n\nLote 0 procesado');
 
     try {
-        // Llamar a la función de análisis (analizará solo las que no tienen temas)
-        const response = await fetch('/api/analyze-topics', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({})  // Sin IDs específicos = analiza todas las que no tienen temas
-        });
+        // Iterar hasta que no haya más conversaciones
+        while (hasMore && iteration < 50) { // Máximo 50 iteraciones (500 conversaciones)
+            iteration++;
 
-        const result = await response.json();
+            // Actualizar mensaje del overlay
+            const overlayText = loadingOverlay.querySelector('h3');
+            if (overlayText) {
+                overlayText.textContent = `🤖 Análisis en progreso...\n\nLote ${iteration} - ${totalConversations} conversaciones procesadas`;
+            }
+
+            console.log(`--- Iteración ${iteration}: Llamando a analyze-topics ---`);
+
+            const response = await fetch('/.netlify/functions/analyze-topics', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({})
+            });
+
+            // Verificar si la respuesta es JSON válido
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('La respuesta del servidor no es JSON válido');
+            }
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Error del servidor');
+            }
+
+            console.log(`✓ Lote ${iteration} completado:`, result);
+
+            // Acumular totales
+            totalConversations += result.conversationsAnalyzed || 0;
+            totalTopics += result.topicsSaved || 0;
+
+            // Verificar si hay más conversaciones
+            if (result.conversationsAnalyzed === 0) {
+                hasMore = false;
+                console.log('✓ No hay más conversaciones para analizar');
+            }
+
+            // Pausa de 2 segundos entre iteraciones
+            if (hasMore) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
 
         hideLoadingOverlay(loadingOverlay);
 
-        if (response.ok) {
-            if (result.conversationsAnalyzed === 0) {
-                alert('✅ Todas las conversaciones ya tienen temas analizados.\n\nNo hay nada que procesar.');
-            } else {
-                alert(
-                    `✅ Re-análisis completado!\n\n` +
-                    `📊 Conversaciones analizadas: ${result.conversationsAnalyzed}\n` +
-                    `🎯 Temas guardados: ${result.topicsSaved}`
-                );
-
-                // Recargar gráficos
-                setTimeout(() => {
-                    loadStats();
-                }, 1000);
-            }
+        // Mensaje final
+        if (totalConversations === 0) {
+            alert('✅ Todas las conversaciones ya tienen temas analizados.\n\nNo hay nada que procesar.');
         } else {
-            alert(`❌ Error: ${result.error}`);
+            const message = `✅ Análisis automático completado!\n\n` +
+                `📊 Conversaciones analizadas: ${totalConversations}\n` +
+                `🎯 Temas guardados: ${totalTopics}\n` +
+                `🔄 Iteraciones: ${iteration}`;
+
+            alert(message);
+
+            // Recargar gráficos
+            setTimeout(() => {
+                loadStats();
+            }, 1000);
         }
 
     } catch (error) {
         hideLoadingOverlay(loadingOverlay);
-        console.error('Error en re-análisis:', error);
-        alert(`❌ Error: ${error.message}`);
+        console.error('❌ Error en análisis iterativo:', error);
+
+        // Mostrar progreso incluso si hubo error
+        const partialMessage = totalConversations > 0
+            ? `\n\nProgreso parcial:\n📊 ${totalConversations} conversaciones\n🎯 ${totalTopics} temas`
+            : '';
+
+        alert(`❌ Error: ${error.message}${partialMessage}\n\nRevisa la consola para más detalles.`);
     }
 }
 
@@ -296,7 +349,7 @@ window.analyzeRemainingTopics = async function() {
 
 function handleFilterTypeChange() {
     const filterType = document.getElementById('filterType').value;
-    
+
     // Ocultar todos los filtros
     document.getElementById('monthFilter').style.display = 'none';
     document.getElementById('yearFilterMonth').style.display = 'none';
@@ -315,7 +368,7 @@ function handleFilterTypeChange() {
 
 function applyFilters() {
     const filterType = document.getElementById('filterType').value;
-    
+
     currentFilters = {};
 
     if (filterType === 'month') {
@@ -325,16 +378,16 @@ function applyFilters() {
         // Obtener fechas del input (formato YYYY-MM-DD del input[type="date"])
         const startDateInput = document.getElementById('startDate').value;
         const endDateInput = document.getElementById('endDate').value;
-        
+
         if (!startDateInput || !endDateInput) {
             alert('Por favor selecciona ambas fechas');
             return;
         }
-        
+
         // Convertir a formato ISO para la API (YYYY-MM-DD)
         currentFilters.startDate = startDateInput;
         currentFilters.endDate = endDateInput;
-        
+
         console.log('Filtros aplicados:', currentFilters);
     }
 
@@ -356,7 +409,7 @@ function loadInitialData() {
     const now = new Date();
     document.getElementById('monthSelect').value = now.getMonth() + 1;
     document.getElementById('yearSelectMonth').value = now.getFullYear();
-    
+
     currentFilters = {
         month: now.getMonth() + 1,
         year: now.getFullYear()
@@ -404,15 +457,15 @@ async function loadStats() {
 // ============================================
 
 function updateGeneralStats(general) {
-    document.getElementById('totalConversations').textContent = 
+    document.getElementById('totalConversations').textContent =
         parseInt(general.total_conversations || 0).toLocaleString();
-    
-    document.getElementById('totalMessages').textContent = 
+
+    document.getElementById('totalMessages').textContent =
         parseInt(general.total_messages || 0).toLocaleString();
-    
-    document.getElementById('avgMessages').textContent = 
+
+    document.getElementById('avgMessages').textContent =
         parseFloat(general.avg_messages_per_conversation || 0).toFixed(1);
-    
+
     // Contar países únicos (se calculará desde el gráfico de países)
     document.getElementById('totalCountries').textContent = '-';
 }
@@ -439,7 +492,7 @@ function updateCharts(stats) {
 
 function createConversationsByDayChart(data) {
     const ctx = document.getElementById('conversationsByDayChart');
-    
+
     // CORRECCIÓN: Extraer fecha sin conversión de zona horaria
     const labels = data.map(item => {
         const dateStr = item.date.split('T')[0]; // "2025-11-01"
@@ -447,7 +500,7 @@ function createConversationsByDayChart(data) {
         const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
         return `${day} ${monthNames[parseInt(month) - 1]}`;
     });
-    
+
     const values = data.map(item => parseInt(item.count));
 
     chartsInstances.conversationsByDay = new Chart(ctx, {
@@ -488,7 +541,7 @@ function createConversationsByDayChart(data) {
 
 function createCountriesChart(data) {
     const ctx = document.getElementById('countriesChart');
-    
+
     const labels = data.map(item => item.country || 'Desconocido');
     const values = data.map(item => parseInt(item.count));
 
@@ -536,17 +589,17 @@ function createCountriesChart(data) {
 function createTopicsChart(data) {
     const canvas = document.getElementById('topicsChart');
     const container = canvas.parentElement;
-    
+
     // Destruir gráfico anterior si existe
     if (chartsInstances.topics) {
         chartsInstances.topics.destroy();
         delete chartsInstances.topics;
     }
-    
+
     if (!data || data.length === 0) {
         // Reemplazar canvas con mensaje
         canvas.style.display = 'none';
-        
+
         // Buscar si ya existe un mensaje
         let message = container.querySelector('.no-data');
         if (!message) {
@@ -560,7 +613,7 @@ function createTopicsChart(data) {
         }
         return;
     }
-    
+
     // Mostrar canvas y eliminar mensaje si existe
     canvas.style.display = 'block';
     const existingMessage = container.querySelector('.no-data');
@@ -610,7 +663,7 @@ function createTopicsChart(data) {
 
 function createAvgMessagesChart(data) {
     const ctx = document.getElementById('avgMessagesChart');
-    
+
     // CORRECCIÓN: Extraer fecha sin conversión de zona horaria
     const labels = data.map(item => {
         const dateStr = item.date.split('T')[0]; // "2025-11-01"
@@ -618,7 +671,7 @@ function createAvgMessagesChart(data) {
         const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
         return `${day} ${monthNames[parseInt(month) - 1]}`;
     });
-    
+
     const values = data.map(item => parseFloat(item.avg_messages).toFixed(1));
 
     chartsInstances.avgMessages = new Chart(ctx, {
@@ -669,7 +722,7 @@ function showLoadingOverlay(message) {
         justify-content: center;
         z-index: 10000;
     `;
-    
+
     const content = document.createElement('div');
     content.style.cssText = `
         background: white;
@@ -678,16 +731,16 @@ function showLoadingOverlay(message) {
         text-align: center;
         box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     `;
-    
+
     content.innerHTML = `
         <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
         <h3 style="margin: 0 0 10px 0; color: #333;">${message}</h3>
         <p style="margin: 0; color: #666;">Por favor espera...</p>
     `;
-    
+
     overlay.appendChild(content);
     document.body.appendChild(overlay);
-    
+
     return overlay;
 }
 
@@ -727,38 +780,38 @@ window.openPublicReports = function() {
 async function loadPublishedReports() {
     const userRole = localStorage.getItem('userRole');
     const section = document.getElementById('manageReportsSection');
-    
+
     // Solo mostrar para admin
     if (userRole !== 'admin') {
         section.style.display = 'none';
         return;
     }
-    
+
     section.style.display = 'block';
-    
+
     try {
         const response = await fetch('/.netlify/functions/get-public-reports');
-        
+
         if (!response.ok) throw new Error('Error cargando reportes');
-        
+
         const data = await response.json();
         renderPublishedReports(data.all || []);
-        
+
     } catch (error) {
         console.error('Error cargando reportes publicados:', error);
-        document.getElementById('publishedReportsList').innerHTML = 
+        document.getElementById('publishedReportsList').innerHTML =
             '<p style="color: #c33;">Error al cargar reportes</p>';
     }
 }
 
 function renderPublishedReports(reports) {
     const container = document.getElementById('publishedReportsList');
-    
+
     if (reports.length === 0) {
         container.innerHTML = '<p style="color: #666; font-style: italic;">No hay reportes publicados</p>';
         return;
     }
-    
+
     container.innerHTML = `
         <table style="width: 100%; border-collapse: collapse;">
             <thead>
@@ -780,8 +833,8 @@ function renderPublishedReports(reports) {
                             ${formatDateShort(report.published_at)}
                         </td>
                         <td style="padding: 12px; text-align: center;">
-                            <button onclick="deleteReport(${report.id}, '${escapeHtml(report.title)}')" 
-                                    class="btn-secondary" 
+                            <button onclick="deleteReport(${report.id}, '${escapeHtml(report.title)}')"
+                                    class="btn-secondary"
                                     style="padding: 6px 12px; font-size: 13px; background: #fed7d7; color: #c53030; border: 1px solid #fc8181;">
                                 🗑️ Eliminar
                             </button>
@@ -795,13 +848,13 @@ function renderPublishedReports(reports) {
 
 async function deleteReport(reportId, reportTitle) {
     const confirmMsg = `¿Eliminar este reporte?\n\n"${reportTitle}"\n\nEsta acción no se puede deshacer.`;
-    
+
     if (!confirm(confirmMsg)) {
         return;
     }
-    
+
     const loadingOverlay = showLoadingOverlay('Eliminando reporte...');
-    
+
     try {
         const response = await fetch(`/.netlify/functions/delete-report?id=${reportId}`, {
             method: 'DELETE',
@@ -809,20 +862,20 @@ async function deleteReport(reportId, reportTitle) {
                 'Authorization': `Bearer ${authToken}`
             }
         });
-        
+
         const result = await response.json();
-        
+
         hideLoadingOverlay(loadingOverlay);
-        
+
         if (response.ok) {
             alert(`✅ Reporte eliminado exitosamente:\n\n"${result.reportTitle}"`);
-            
+
             // Recargar lista
             loadPublishedReports();
         } else {
             alert(`❌ Error: ${result.error}`);
         }
-        
+
     } catch (error) {
         hideLoadingOverlay(loadingOverlay);
         console.error('Error eliminando reporte:', error);
@@ -833,9 +886,9 @@ async function deleteReport(reportId, reportTitle) {
 function formatDateShort(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr);
-    return d.toLocaleDateString('es-VE', { 
-        day: '2-digit', 
-        month: 'short', 
+    return d.toLocaleDateString('es-VE', {
+        day: '2-digit',
+        month: 'short',
         year: 'numeric'
     });
 }
