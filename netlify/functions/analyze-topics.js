@@ -1,5 +1,6 @@
 // ============================================
-// FUNCIÓN: ANALYZE TOPICS - MEJORADA
+// FUNCIÓN: ANALYZE TOPICS - VERSIÓN ROBUSTA
+// Con mejor manejo de timeouts y errores
 // ============================================
 
 const { Pool } = require('pg');
@@ -43,17 +44,15 @@ exports.handler = async (event, context) => {
       throw new Error('ANTHROPIC_API_KEY no está configurada');
     }
 
-    // Parsear body
     const body = JSON.parse(event.body || '{}');
-    const specificIds = body.conversationIds; // IDs específicos (modo automático)
-    const isAutoMode = body.autoMode === true;
+    const specificIds = body.conversationIds;
 
     const pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       ssl: { rejectUnauthorized: false }
     });
 
-    // Query: conversaciones sin temas
+    // Query: conversaciones sin temas - LÍMITE REDUCIDO A 20
     let query = `
       SELECT c.id, c.title, c.created_at
       FROM conversations c
@@ -62,13 +61,12 @@ exports.handler = async (event, context) => {
     `;
     let queryParams = [];
 
-    // Si hay IDs específicos, filtrar por ellos
     if (specificIds && specificIds.length > 0) {
       query += ` AND c.id = ANY($1)`;
       queryParams.push(specificIds);
     }
 
-    query += ` ORDER BY c.created_at DESC LIMIT 50`; // Máximo 50 por llamada
+    query += ` ORDER BY c.created_at DESC LIMIT 20`; // REDUCIDO DE 50 A 20
 
     const conversationsResult = await pool.query(query, queryParams);
 
@@ -90,18 +88,18 @@ exports.handler = async (event, context) => {
 
     let totalTopicsSaved = 0;
     let conversationsAnalyzed = 0;
-    const BATCH_SIZE = 5; // Lotes de 5
+    const BATCH_SIZE = 3; // REDUCIDO DE 5 A 3
 
     // Procesar en lotes
     for (let i = 0; i < conversationsResult.rows.length; i += BATCH_SIZE) {
       const batch = conversationsResult.rows.slice(i, i + BATCH_SIZE);
       const batchIds = batch.map(c => c.id);
-      
+
       console.log(`--- Lote ${Math.floor(i/BATCH_SIZE) + 1}: ${batch.length} conversaciones ---`);
 
       // Obtener mensajes
       const messagesResult = await pool.query(`
-        SELECT 
+        SELECT
           m.conversation_id,
           m.content,
           c.title
@@ -138,28 +136,20 @@ exports.handler = async (event, context) => {
           return `CONV${index + 1}: ${messagesText.substring(0, 300)}`;
         }).join('\n\n');
 
-      // PROMPT
-      const prompt = `Analiza estas ${batch.length} conversaciones sobre Historia de Venezuela y asigna 1-3 TEMAS ESPECÍFICOS a cada conversación.
+      // PROMPT MEJORADO
+      const prompt = `Analiza estas ${batch.length} conversaciones sobre Historia de Venezuela y asigna 1-3 temas a cada una.
 
 ${conversationsList}
 
 REGLAS:
-1. Cada conversación debe tener sus propios temas según su contenido
-2. Temas generales y concisos (max 3 palabras)
-3. NO uses "de Venezuela" - se sobreentiende
-4. Agrupa temas similares con el mismo nombre
+1. Temas generales (máx 3 palabras)
+2. NO uses "de Venezuela"
+3. Agrupa temas similares
 
-TEMAS VÁLIDOS (ejemplos):
-✅ Independencia, Próceres, Fuerzas Armadas, Democracia, Época Colonial, Caudillismo, Economía, Educación, Cultura, Política, Historia Regional, Personajes, Batallas, Instituciones
+EJEMPLOS: Independencia, Próceres, Fuerzas Armadas, Democracia, Economía, Educación
 
-RESPONDE JSON (sin markdown):
-{
-  "conversations": [
-    {"conv_id": "CONV1", "topics": ["Próceres", "Independencia"]},
-    {"conv_id": "CONV2", "topics": ["Democracia"]},
-    {"conv_id": "CONV3", "topics": ["Fuerzas Armadas", "Historia"]}
-  ]
-}`;
+RESPONDE SOLO CON JSON VÁLIDO (sin markdown ni comentarios):
+{"conversations":[{"conv_id":"CONV1","topics":["Próceres","Independencia"]},{"conv_id":"CONV2","topics":["Democracia"]}]}`;
 
       // Llamar a Claude
       const claudeResponse = await fetch('https://api.anthropic.com/v1/messages', {
@@ -171,7 +161,7 @@ RESPONDE JSON (sin markdown):
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
+          max_tokens: 1500,
           temperature: 0.3,
           messages: [{
             role: 'user',
@@ -188,22 +178,42 @@ RESPONDE JSON (sin markdown):
       const claudeData = await claudeResponse.json();
       const analysisText = claudeData.content[0].text;
 
-      // Parsear JSON
+      // MEJORAR PARSING DE JSON
       let analysis;
       try {
-        const cleanText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        // Intentar parsear directamente
+        const cleanText = analysisText
+          .replace(/```json\n?/g, '')
+          .replace(/```\n?/g, '')
+          .replace(/\/\/.*$/gm, '') // Eliminar comentarios
+          .trim();
+
         analysis = JSON.parse(cleanText);
       } catch (e) {
-        const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+        console.error('⚠ Error parseando JSON, intentando extraer...');
+
+        // Intentar extraer JSON del texto
+        const jsonMatch = analysisText.match(/\{[\s\S]*"conversations"[\s\S]*\}/);
         if (!jsonMatch) {
-          console.error('⚠ No se pudo parsear JSON');
+          console.error('⚠ No se pudo extraer JSON, saltando lote');
+          console.error('Respuesta de Claude:', analysisText.substring(0, 500));
           continue;
         }
-        analysis = JSON.parse(jsonMatch[0]);
+
+        try {
+          const extractedJson = jsonMatch[0]
+            .replace(/,\s*}/g, '}') // Eliminar comas finales
+            .replace(/,\s*]/g, ']'); // Eliminar comas finales en arrays
+          analysis = JSON.parse(extractedJson);
+        } catch (e2) {
+          console.error('⚠ Fallo extrayendo JSON, saltando lote');
+          console.error('JSON extraído:', jsonMatch[0].substring(0, 500));
+          continue;
+        }
       }
 
       if (!analysis.conversations || !Array.isArray(analysis.conversations)) {
-        console.error('⚠ Formato inválido');
+        console.error('⚠ Formato inválido, saltando');
         continue;
       }
 
@@ -214,7 +224,7 @@ RESPONDE JSON (sin markdown):
       for (const convResult of analysis.conversations) {
         const convIndex = parseInt(convResult.conv_id.replace('CONV', '')) - 1;
         const realConvId = convMapping[convIndex];
-        
+
         if (!realConvId || !convResult.topics) continue;
 
         for (const topicName of convResult.topics) {
@@ -237,8 +247,8 @@ RESPONDE JSON (sin markdown):
       conversationsAnalyzed += batch.length;
       console.log(`✓ Lote procesado: ${totalTopicsSaved} temas totales`);
 
-      // Pausa para no saturar API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Pausa más larga para evitar saturar API
+      await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
     await pool.end();
@@ -253,17 +263,17 @@ RESPONDE JSON (sin markdown):
         success: true,
         conversationsAnalyzed,
         topicsSaved: totalTopicsSaved,
-        message: `Análisis completado: ${conversationsAnalyzed} conversaciones analizadas, ${totalTopicsSaved} temas guardados`
+        message: `Análisis completado: ${conversationsAnalyzed} conversaciones, ${totalTopicsSaved} temas`
       })
     };
 
   } catch (error) {
     console.error('❌ ERROR:', error);
-    
+
     return {
       statusCode: error.message === 'No autorizado' ? 401 : 500,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Error al analizar temas',
         details: error.message
       })
@@ -271,31 +281,29 @@ RESPONDE JSON (sin markdown):
   }
 };
 
-// Función de limpieza de temas
+// Función de limpieza
 function cleanTopic(topicName) {
   if (!topicName) return '';
-  
+
   let cleaned = topicName.trim();
-  
+
   const redundancies = [
     / de Venezuela$/i,
     / venezolano$/i,
     / venezolana$/i,
-    / venezolanos$/i,
-    / venezolanas$/i,
     / en Venezuela$/i,
     /^La /,
     /^El /,
     /^Los /,
     /^Las /
   ];
-  
+
   redundancies.forEach(pattern => {
     cleaned = cleaned.replace(pattern, '');
   });
-  
+
   cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
   cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
+
   return cleaned;
 }
