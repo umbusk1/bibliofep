@@ -220,29 +220,55 @@ RESPONDE SOLO CON JSON VÁLIDO (sin markdown ni comentarios):
       // Mapear CONV1, CONV2... a IDs reales
       const convMapping = Object.keys(conversationTexts);
 
-      // Guardar temas
-      for (const convResult of analysis.conversations) {
-        const convIndex = parseInt(convResult.conv_id.replace('CONV', '')) - 1;
-        const realConvId = convMapping[convIndex];
+// Guardar temas
+for (const convResult of analysis.conversations) {
+  const convIndex = parseInt(convResult.conv_id.replace('CONV', '')) - 1;
+  const realConvId = convMapping[convIndex];
 
-        if (!realConvId || !convResult.topics) continue;
+  if (!realConvId) {
+    console.log(`⚠ No se encontró ID real para ${convResult.conv_id}`);
+    continue;
+  }
 
-        for (const topicName of convResult.topics) {
-          const cleanedTopic = cleanTopic(topicName);
-          if (!cleanedTopic || cleanedTopic.length === 0) continue;
+  if (!convResult.topics) {
+    console.log(`⚠ No hay temas para conversación ${realConvId}`);
+    continue;
+  }
 
-          try {
-            await pool.query(`
-              INSERT INTO topics (conversation_id, topic_name, relevance_score)
-              VALUES ($1, $2, $3)
-              ON CONFLICT DO NOTHING
-            `, [realConvId, cleanedTopic, 1.0]);
-            totalTopicsSaved++;
-          } catch (err) {
-            console.error('Error guardando tema:', err.message);
-          }
-        }
+  console.log(`Guardando temas para conversación ${realConvId}:`, convResult.topics);
+
+  for (const topicName of convResult.topics) {
+    const cleanedTopic = cleanTopic(topicName);
+
+    if (!cleanedTopic || cleanedTopic.length === 0) {
+      console.log(`⚠ Tema vacío después de limpiar: "${topicName}"`);
+      continue;
+    }
+
+    try {
+      console.log(`  Insertando: ${realConvId} -> ${cleanedTopic}`);
+
+      const result = await pool.query(`
+        INSERT INTO topics (conversation_id, topic_name, relevance_score)
+        VALUES ($1, $2, $3)
+        ON CONFLICT DO NOTHING
+        RETURNING id
+      `, [realConvId, cleanedTopic, 1.0]);
+
+      if (result.rows.length > 0) {
+        console.log(`  ✓ Tema guardado con ID: ${result.rows[0].id}`);
+        totalTopicsSaved++;
+      } else {
+        console.log(`  ⚠ Tema ya existía (ON CONFLICT)`);
       }
+
+    } catch (err) {
+      console.error(`  ❌ ERROR guardando tema "${cleanedTopic}":`, err);
+      console.error(`     Conversación: ${realConvId}`);
+      console.error(`     Error completo:`, err.stack);
+    }
+  }
+}
 
       conversationsAnalyzed += batch.length;
       console.log(`✓ Lote procesado: ${totalTopicsSaved} temas totales`);
