@@ -66,7 +66,7 @@ exports.handler = async (event, context) => {
       queryParams.push(specificIds);
     }
 
-    query += ` ORDER BY c.created_at DESC LIMIT 20`; // REDUCIDO DE 50 A 20
+    query += ` ORDER BY c.created_at DESC LIMIT 10`; // REDUCIDO DE 50 A 10
 
     const conversationsResult = await pool.query(query, queryParams);
 
@@ -88,7 +88,7 @@ exports.handler = async (event, context) => {
 
     let totalTopicsSaved = 0;
     let conversationsAnalyzed = 0;
-    const BATCH_SIZE = 3; // REDUCIDO DE 5 A 3
+    const BATCH_SIZE = 2; // REDUCIDO DE 5 A 2
 
     // Procesar en lotes
     for (let i = 0; i < conversationsResult.rows.length; i += BATCH_SIZE) {
