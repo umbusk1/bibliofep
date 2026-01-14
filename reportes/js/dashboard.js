@@ -405,10 +405,27 @@ function resetFilters() {
 // ============================================
 
 function loadInitialData() {
+    // Poblar selector de años dinámicamente (2024 a 2049)
+    const yearSelect = document.getElementById('yearSelectMonth');
+    const currentYear = new Date().getFullYear();
+    const startYear = 2024;
+    const endYear = startYear + 25; // 2024 + 25 = 2049
+
+    yearSelect.innerHTML = ''; // Limpiar opciones existentes
+
+    for (let year = endYear; year >= startYear; year--) {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        if (year === currentYear) {
+            option.selected = true;
+        }
+        yearSelect.appendChild(option);
+    }
+
     // Establecer mes y año actual por defecto
     const now = new Date();
     document.getElementById('monthSelect').value = now.getMonth() + 1;
-    document.getElementById('yearSelectMonth').value = now.getFullYear();
 
     currentFilters = {
         month: now.getMonth() + 1,
