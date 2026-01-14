@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <!-- Chart.js desde CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    
+
     <style>
         /* Estilos adicionales para los botones de acción */
         .action-buttons-section {
@@ -18,20 +18,20 @@
             margin: 20px auto;
             max-width: 1200px;
         }
-        
+
         .action-buttons-grid {
             display: grid;
             grid-template-columns: 1fr 1fr 2fr; /* 25% + 25% + 50% */
             gap: 15px;
         }
-        
+
         /* Responsive: en pantallas pequeñas, apilar verticalmente */
         @media (max-width: 768px) {
             .action-buttons-grid {
                 grid-template-columns: 1fr;
             }
         }
-        
+
         .action-btn {
             padding: 20px 25px;
             border: none;
@@ -47,26 +47,26 @@
             justify-content: center;
             gap: 8px;
         }
-        
+
         .action-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.2);
         }
-        
+
         .action-btn:active {
             transform: translateY(0);
         }
-        
+
         .action-btn-upload {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
-        
+
         .action-btn-analysis {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
         }
-        
+
         /* Contenedor especial para el botón de publicar con input */
         .publish-action-container {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
@@ -78,12 +78,12 @@
             align-items: center;
             transition: all 0.3s ease;
         }
-        
+
         .publish-action-container:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(79, 172, 254, 0.5);
         }
-        
+
         .publish-action-container input {
             flex: 1;
             padding: 12px 15px;
@@ -92,17 +92,17 @@
             font-size: 15px;
             background: rgba(255, 255, 255, 0.95);
         }
-        
+
         .publish-action-container input:focus {
             outline: none;
             border-color: white;
             background: white;
         }
-        
+
         .publish-action-container input::placeholder {
             color: #999;
         }
-        
+
         .publish-action-container button {
             padding: 12px 25px;
             background: white;
@@ -114,16 +114,16 @@
             white-space: nowrap;
             transition: all 0.3s;
         }
-        
+
         .publish-action-container button:hover {
             background: #f0f9ff;
             transform: scale(1.05);
         }
-        
+
         .section-hidden {
             display: none !important;
         }
-        
+
         .header-logo {
             height: 50px;
             margin-right: 15px;
@@ -131,13 +131,13 @@
     </style>
 </head>
 <body class="dashboard-page">
-    
+
 <!-- HEADER -->
 <header class="dashboard-header">
     <div class="header-content">
         <div class="header-left">
-            <img src="logo.png" 
-                 alt="Umbusk Logo" 
+            <img src="logo.png"
+                 alt="Umbusk Logo"
                  class="header-logo">
             <div class="header-text">
                 <h1>📊 Reportes Bibliofep</h1>
@@ -159,32 +159,32 @@
 <!-- BOTONES DE ACCIÓN PRINCIPALES -->
 <div class="action-buttons-section">
     <div class="action-buttons-grid">
-        
+
         <!-- Botón 1: Cargar JSON (1/4) - Abre selector directo -->
         <button class="action-btn action-btn-upload" onclick="openFileSelector()">
             📤 Cargar Nuevo JSON
         </button>
-        
+
         <!-- Botón 2: Análisis (1/4) - Muestra sección -->
         <button class="action-btn action-btn-upload" onclick="analyzeRemainingTopics()">
             🔄 Re-analizar Temas Faltantes con AI
         </button>
-        
+
         <!-- Botón 3: Publicar con Input (1/2) - e ir al frontend -->
         <div class="publish-action-container">
-            <input type="text" 
-                   id="reportTitleInput" 
+            <input type="text"
+                   id="reportTitleInput"
                    placeholder="Título del reporte (ej: Reporte Octubre 2025)">
             <button onclick="publishReport()">
                 🌐 Publicar
             </button>
 
-            <button onclick="openPublicReports()" 
-            class="action-btn btn-gradient-green" 
+            <button onclick="openPublicReports()"
+            class="action-btn btn-gradient-green"
             style="flex: 0 0 auto; padding: 12px 24px; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; font-size: 14px;">
                 👁️ Ver Reportes Públicos
             </button>
-        </div>            
+        </div>
     </div>
 </div>
 
@@ -223,14 +223,12 @@
                     </select>
                 </div>
 
-                <div id="yearFilterMonth" class="filter-group">
-                    <label for="yearSelectMonth">Año:</label>
-                    <select id="yearSelectMonth">
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                        <option value="2023">2023</option>
-                    </select>
-                </div>
+				<div id="yearFilterMonth" class="filter-group">
+					<label for="yearSelectMonth">Año:</label>
+					<select id="yearSelectMonth">
+						<!-- Se populará dinámicamente con JavaScript -->
+					</select>
+				</div>
 
                 <!-- Filtro por rango de fechas -->
                 <div id="rangeFilter" class="filter-group" style="display: none;">
@@ -287,7 +285,7 @@
 
         <!-- GRÁFICOS -->
         <section class="charts-grid">
-            
+
             <!-- Gráfico 1: Conversaciones por Día -->
             <div class="chart-card card">
                 <h3>📅 Conversaciones por Día</h3>
@@ -313,14 +311,14 @@
             </div>
 
         </section>
-        
+
         <!-- SECCIÓN: GESTIONAR REPORTES (Solo Admin) -->
         <div id="manageReportsSection" class="card" style="display: none;">
             <h2>📋 Gestionar Reportes Publicados</h2>
             <p class="section-description">
                 Lista de reportes actualmente publicados. Puedes eliminar reportes incorrectos o de prueba.
             </p>
-            
+
             <div id="publishedReportsList" style="margin-top: 20px;">
                 <div class="loading">Cargando reportes...</div>
             </div>
@@ -334,6 +332,6 @@
     </footer>
 
     <script src="js/dashboard.js"></script>
-    
+
 </body>
 </html>
